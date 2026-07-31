@@ -79,6 +79,9 @@ export async function GET(request) {
         'Content-Type': 'application/vnd.apple.mpegurl',
         'Cache-Control': 'no-store',
         'Access-Control-Allow-Origin': '*',
+        // Ask reverse proxies (Traefik/nginx in front of the app, e.g. on Coolify)
+        // not to buffer this response - buffering breaks/delays live HLS playback.
+        'X-Accel-Buffering': 'no',
       },
     });
   }
@@ -90,6 +93,7 @@ export async function GET(request) {
   }
   respHeaders.set('Cache-Control', 'no-store');
   respHeaders.set('Access-Control-Allow-Origin', '*');
+  respHeaders.set('X-Accel-Buffering', 'no');
 
   return new Response(upstream.body, {
     status: upstream.status,

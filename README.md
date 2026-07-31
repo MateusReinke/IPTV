@@ -36,8 +36,37 @@ npm start
 ```
 
 A aplicação é um único app Next.js (frontend + rotas de API), então pode ser
-implantada em qualquer plataforma com suporte a Node.js (Vercel, Railway,
-um VPS com `npm start`/PM2, etc.).
+implantada em qualquer plataforma com suporte a Node.js ou Docker (Coolify,
+Vercel, Railway, um VPS com `npm start`/PM2, etc.). Veja a seção
+[Deploy com Coolify](#deploy-com-coolify) abaixo.
+
+Também é possível buildar e rodar via Docker diretamente:
+
+```bash
+docker build -t iptv-player .
+docker run -p 3000:3000 iptv-player
+```
+
+## Deploy com Coolify
+
+O repositório já inclui um `Dockerfile` (multi-stage, usando o output
+`standalone` do Next.js), então o Coolify detecta e builda automaticamente:
+
+1. No Coolify: **+ New** → **Application** → escolha a fonte (GitHub App ou
+   repositório público) e selecione este repositório e a branch desejada
+   (`main`, após o merge da PR).
+2. **Build Pack**: `Dockerfile` (auto-detectado). Não é necessário configurar
+   comandos de build/start manualmente.
+3. **Port**: `3000` (já exposto no `Dockerfile`).
+4. **Variáveis de ambiente**: nenhuma é obrigatória — as playlists ficam no
+   `localStorage` do navegador, então não há segredos para configurar.
+5. Defina um domínio na aba **Domains**; o Coolify emite HTTPS
+   automaticamente (Let's Encrypt) assim que o DNS apontar para o servidor.
+6. **Deploy**. Para redeploy automático a cada push, ative o webhook em
+   **Automations**/**Webhooks** da aplicação.
+
+Não é preciso configurar nenhum volume persistente — a aplicação não grava
+nada em disco.
 
 ## Arquitetura
 
@@ -50,6 +79,8 @@ um VPS com `npm start`/PM2, etc.).
   playlists `.m3u8` para que os segmentos também passem pelo proxy)
 - `lib/xtream.js` — helpers para montar URLs e chamar a API Xtream
 - `lib/playlists.js` — playlists salvas no `localStorage` do navegador
+- `Dockerfile` — build multi-stage com output `standalone` do Next.js, usado
+  pelo Coolify (ou qualquer plataforma baseada em Docker)
 
 ## Sobre as credenciais
 
