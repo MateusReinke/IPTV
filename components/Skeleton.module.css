@@ -1,0 +1,58 @@
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--col, 150px), 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius);
+  background: var(--surface);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.thumb.portrait {
+  aspect-ratio: 2 / 3;
+}
+
+.line {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.line.short {
+  width: 60%;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.row {
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  animation: pulse 1.4s ease-in-out infinite;
+}

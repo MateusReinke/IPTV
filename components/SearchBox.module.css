@@ -3,12 +3,12 @@
   display: flex;
   align-items: center;
   width: 100%;
-  max-width: 320px;
+  max-width: 360px;
 }
 
 .icon {
   position: absolute;
-  left: 12px;
+  left: 13px;
   color: var(--text-faint);
   pointer-events: none;
   display: flex;
@@ -19,9 +19,12 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 10px 12px 10px 38px;
+  padding: 11px 38px 11px 38px;
   font-size: 14px;
   color: var(--text);
+  transition:
+    border-color 0.2s var(--ease),
+    background-color 0.2s var(--ease);
 }
 
 .input::placeholder {
@@ -30,4 +33,22 @@
 
 .input:focus {
   border-color: var(--accent);
+  background: var(--surface-hover);
+}
+
+.clear {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  color: var(--text-faint);
+}
+
+.clear:hover {
+  color: var(--text);
+  background: var(--surface-active);
 }

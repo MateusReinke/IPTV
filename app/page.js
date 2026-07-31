@@ -40,8 +40,16 @@ export default function PlaylistsPage() {
     <main className={styles.page}>
       <div className={styles.container}>
         <div className={styles.header}>
-          <h1 className={styles.title}>IPTV Player</h1>
-          <p className={styles.subtitle}>Conecte-se a um servidor Xtream Codes para assistir</p>
+          <span className={styles.logo} aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <rect x="2.5" y="5" width="19" height="13" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M8 21h8M7 2 12 5l5-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+          <div className={styles.headerText}>
+            <h1 className={styles.title}>IPTV Player</h1>
+            <p className={styles.subtitle}>Conecte-se a um servidor Xtream Codes para assistir</p>
+          </div>
         </div>
 
         {playlists.length > 0 && (

@@ -14,7 +14,9 @@
   flex-wrap: wrap;
   position: sticky;
   top: 0;
-  background: var(--bg);
+  background: rgba(11, 11, 14, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   z-index: 5;
 }
 
@@ -34,6 +36,7 @@
   border-radius: var(--radius-sm);
   color: var(--text-dim);
   flex-shrink: 0;
+  transition: background-color 0.15s var(--ease), color 0.15s var(--ease);
 }
 
 .back:hover {
@@ -54,37 +57,52 @@
   display: flex;
   flex: 1;
   min-height: 0;
+  gap: 20px;
+  padding: 20px 24px 60px;
 }
 
 .sidebar {
-  width: 230px;
+  width: 240px;
   flex-shrink: 0;
-  border-right: 1px solid var(--border);
-  padding: 16px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 12px;
   overflow-y: auto;
+  align-self: flex-start;
+  max-height: calc(100vh - 110px);
+  position: sticky;
+  top: 90px;
 }
 
 .content {
   flex: 1;
   min-width: 0;
-  padding: 20px 24px 60px;
-  overflow-y: auto;
 }
 
 .toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
   margin-bottom: 20px;
+}
+
+.resultHint {
+  font-size: 13px;
+  color: var(--text-faint);
 }
 
 @media (max-width: 760px) {
   .body {
     flex-direction: column;
+    padding: 16px 16px 48px;
   }
 
   .sidebar {
     width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    max-height: 180px;
+    max-height: 220px;
+    position: static;
   }
 
   .playlistTitle {

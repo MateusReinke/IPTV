@@ -11,7 +11,9 @@
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  background: var(--bg);
+  background: rgba(11, 11, 14, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   z-index: 5;
 }
 
@@ -24,6 +26,7 @@
   border-radius: var(--radius-sm);
   color: var(--text-dim);
   flex-shrink: 0;
+  transition: background-color 0.15s var(--ease), color 0.15s var(--ease);
 }
 
 .back:hover {
@@ -50,8 +53,8 @@
   flex-shrink: 0;
   width: 170px;
   aspect-ratio: 2 / 3;
-  border-radius: var(--radius);
-  background: var(--surface);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, var(--surface-hover), var(--surface));
   border: 1px solid var(--border);
   overflow: hidden;
   display: flex;
@@ -60,6 +63,7 @@
   font-size: 34px;
   font-weight: 700;
   color: var(--text-faint);
+  box-shadow: var(--shadow-lg);
 }
 
 .posterImg {
@@ -129,6 +133,10 @@
   color: var(--text-faint);
   background: var(--surface);
   border: 1px solid var(--border);
+  transition:
+    background-color 0.15s var(--ease),
+    color 0.15s var(--ease),
+    border-color 0.15s var(--ease);
 }
 
 .seasonTab:hover {

@@ -3,17 +3,12 @@
 import { useState } from 'react';
 import styles from './MediaCard.module.css';
 
-export default function MediaCard({ title, image, aspect = 'landscape', onClick }) {
+export default function MediaCard({ title, subtitle, image, aspect = 'landscape', onClick }) {
   const [broken, setBroken] = useState(false);
   const showImage = image && !broken;
 
   return (
-    <button
-      type="button"
-      className={styles.card}
-      onClick={onClick}
-      title={title}
-    >
+    <button type="button" className={styles.card} onClick={onClick} title={title}>
       <span className={`${styles.thumb} ${styles[aspect]}`}>
         {showImage ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -35,7 +30,10 @@ export default function MediaCard({ title, image, aspect = 'landscape', onClick 
           </svg>
         </span>
       </span>
-      <span className={styles.name}>{title}</span>
+      <span className={styles.body}>
+        <span className={styles.name}>{title}</span>
+        {subtitle && <span className={styles.subtitle}>{subtitle}</span>}
+      </span>
     </button>
   );
 }
