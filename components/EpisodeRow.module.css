@@ -1,0 +1,63 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  border: 1px solid transparent;
+}
+
+.row:hover {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.num {
+  flex-shrink: 0;
+  width: 30px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plot {
+  font-size: 13px;
+  color: var(--text-faint);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+.play {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: var(--text-faint);
+}
+
+.row:hover .play {
+  color: var(--accent);
+}

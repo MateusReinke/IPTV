@@ -1,0 +1,76 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.portrait {
+  aspect-ratio: 2 / 3;
+}
+
+.card:hover .thumb {
+  border-color: var(--accent);
+}
+
+.img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.landscape .img {
+  object-fit: contain;
+  padding: 10px;
+}
+
+.fallback {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+
+.playBadge {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 16, 19, 0.35);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  color: #fff;
+}
+
+.card:hover .playBadge {
+  opacity: 1;
+}
+
+.name {
+  font-size: 13.5px;
+  color: var(--text-dim);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.card:hover .name {
+  color: var(--text);
+}

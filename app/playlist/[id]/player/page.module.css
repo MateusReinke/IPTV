@@ -1,0 +1,55 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.back:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playerWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 24px;
+}
+
+.playerWrap > * {
+  width: 100%;
+}
+
+.stateWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
