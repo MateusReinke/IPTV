@@ -56,3 +56,18 @@
   background: var(--surface);
   animation: pulse 1.4s ease-in-out infinite;
 }
+
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.chip {
+  flex-shrink: 0;
+  width: var(--w, 100px);
+  height: 36px;
+  border-radius: 999px;
+  background: var(--surface);
+  animation: pulse 1.4s ease-in-out infinite;
+}

@@ -23,3 +23,19 @@ export function SkeletonRows({ count = 8 }) {
     </div>
   );
 }
+
+const CHIP_WIDTHS = [92, 130, 108, 150, 96, 120, 104];
+
+export function SkeletonChips({ count = 7 }) {
+  return (
+    <div className={styles.chips}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          className={styles.chip}
+          key={i}
+          style={{ '--w': `${CHIP_WIDTHS[i % CHIP_WIDTHS.length]}px` }}
+        />
+      ))}
+    </div>
+  );
+}

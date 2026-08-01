@@ -142,7 +142,7 @@ function PlayerContent() {
         onTouchStart={showControls}
         onClick={showControls}
       >
-        <VideoPlayer key={src} src={src} isHls={ext === 'm3u8'} onEnded={handleEnded} />
+        <VideoPlayer key={src} src={src} isHls={ext === 'm3u8'} ext={ext} onEnded={handleEnded} />
 
         <div className={`${styles.overlayTop} ${controlsVisible ? '' : styles.hidden}`}>
           <button

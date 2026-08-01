@@ -6,13 +6,14 @@ import useSWR from 'swr';
 import { usePlaylist } from '@/lib/playlists';
 import { accountIsActive, xtreamRequest } from '@/lib/xtream';
 import { normalize } from '@/lib/text';
-import Tabs from '@/components/Tabs';
+import NavRail from '@/components/NavRail';
 import SearchBox from '@/components/SearchBox';
 import CategoryList from '@/components/CategoryList';
 import MediaGrid from '@/components/MediaGrid';
 import MediaCard from '@/components/MediaCard';
 import StatusPill from '@/components/StatusPill';
-import { SkeletonGrid, SkeletonRows } from '@/components/Skeleton';
+import Hero from '@/components/Hero';
+import { SkeletonGrid, SkeletonChips } from '@/components/Skeleton';
 import { ErrorState, EmptyState } from '@/components/StateMessage';
 import styles from './page.module.css';
 
@@ -20,18 +21,21 @@ const TABS = [
   {
     value: 'live',
     label: 'TV ao vivo',
+    shortLabel: 'Ao vivo',
     catAction: 'get_live_categories',
     streamAction: 'get_live_streams',
   },
   {
     value: 'movie',
     label: 'Filmes',
+    shortLabel: 'Filmes',
     catAction: 'get_vod_categories',
     streamAction: 'get_vod_streams',
   },
   {
     value: 'series',
     label: 'Series',
+    shortLabel: 'Series',
     catAction: 'get_series_categories',
     streamAction: 'get_series',
   },
@@ -109,6 +113,11 @@ export default function BrowsePage() {
     return list.filter((item) => normalize(item.name).includes(q));
   }, [items, search, isSearching]);
 
+  const featuredItem =
+    !isSearching && activeTab !== 'live' && categoryItems && categoryItems.length > 0
+      ? categoryItems[0]
+      : null;
+
   function selectTab(tab) {
     setActiveTab(tab);
     setSearch('');
@@ -133,53 +142,62 @@ export default function BrowsePage() {
     }
   }
 
+  function openFeaturedDetails() {
+    if (!featuredItem || activeTab !== 'series') return;
+    const title = encodeURIComponent(featuredItem.name || '');
+    router.push(`/playlist/${id}/series/${featuredItem.series_id}?title=${title}`);
+  }
+
   if (playlist === null) {
     return (
-      <main className={styles.page}>
+      <main className={styles.shell}>
         <ErrorState message="Playlist nao encontrada." onRetry={() => router.push('/')} />
       </main>
     );
   }
 
   return (
-    <main className={styles.page}>
-      <header className={styles.topbar}>
-        <div className={styles.topbarLeft}>
-          <button type="button" className={styles.back} onClick={() => router.push('/')} aria-label="Voltar">
-            <BackIcon />
-          </button>
-          <div>
-            <p className={styles.playlistTitle}>{playlist.title}</p>
-            {account && (
-              <StatusPill tone={accountIsActive(account) ? 'active' : 'danger'}>
-                {accountIsActive(account) ? 'Ativa' : 'Expirada'}
-                {account.exp_date ? ` · ate ${formatExpiry(account.exp_date)}` : ''}
-              </StatusPill>
-            )}
-          </div>
-        </div>
-        <Tabs tabs={TABS} active={activeTab} onChange={selectTab} />
-      </header>
+    <div className={styles.shell}>
+      <NavRail tabs={TABS} active={activeTab} onChange={selectTab} onHome={() => router.push('/')} />
 
-      <div className={styles.body}>
-        <aside className={styles.sidebar}>
-          {categoriesLoading && <SkeletonRows count={10} />}
-          {categoriesError && (
-            <ErrorState message={categoriesError.message} onRetry={() => reloadCategories()} />
+      <main className={styles.main}>
+        <header className={styles.topHeader}>
+          <p className={styles.playlistTitle}>{playlist.title}</p>
+          {account && (
+            <StatusPill tone={accountIsActive(account) ? 'active' : 'danger'}>
+              {accountIsActive(account) ? 'Ativa' : 'Expirada'}
+              {account.exp_date ? ` · ate ${formatExpiry(account.exp_date)}` : ''}
+            </StatusPill>
           )}
-          {!categoriesLoading && !categoriesError && (categories || []).length === 0 && (
-            <EmptyState message="Nenhuma categoria disponivel." />
-          )}
-          {!categoriesLoading && !categoriesError && (categories || []).length > 0 && (
-            <CategoryList
-              categories={categories}
-              activeId={isSearching ? null : currentCategoryId}
-              onSelect={selectCategory}
+        </header>
+
+        <div className={styles.content}>
+          {featuredItem && (
+            <Hero
+              kind={activeTab}
+              item={featuredItem}
+              onPlay={() => openItem(featuredItem)}
+              onMoreInfo={activeTab === 'series' ? openFeaturedDetails : undefined}
             />
           )}
-        </aside>
 
-        <section className={styles.content}>
+          <div className={styles.categorySection}>
+            {categoriesLoading && <SkeletonChips count={7} />}
+            {categoriesError && (
+              <ErrorState message={categoriesError.message} onRetry={() => reloadCategories()} />
+            )}
+            {!categoriesLoading && !categoriesError && (categories || []).length === 0 && (
+              <EmptyState message="Nenhuma categoria disponivel." />
+            )}
+            {!categoriesLoading && !categoriesError && (categories || []).length > 0 && (
+              <CategoryList
+                categories={categories}
+                activeId={isSearching ? null : currentCategoryId}
+                onSelect={selectCategory}
+              />
+            )}
+          </div>
+
           <div className={styles.toolbar}>
             <SearchBox
               value={search}
@@ -223,9 +241,9 @@ export default function BrowsePage() {
               ))}
             </MediaGrid>
           )}
-        </section>
-      </div>
-    </main>
+        </div>
+      </main>
+    </div>
   );
 }
 
@@ -237,18 +255,4 @@ function formatExpiry(unixSeconds) {
   } catch {
     return '';
   }
-}
-
-function BackIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M15 5l-7 7 7 7"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
