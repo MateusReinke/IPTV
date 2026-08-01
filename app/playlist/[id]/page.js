@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import { usePlaylist } from '@/lib/playlists';
 import { accountIsActive, xtreamRequest } from '@/lib/xtream';
 import { normalize } from '@/lib/text';
+import { toFavoriteEntry, toggleFavorite, useFavoriteKeys, useFavorites } from '@/lib/favorites';
 import NavRail from '@/components/NavRail';
 import SearchBox from '@/components/SearchBox';
 import CategoryList from '@/components/CategoryList';
@@ -41,6 +42,8 @@ const TABS = [
   },
 ];
 
+const KIND_LABEL = { live: 'Ao vivo', movie: 'Filme', series: 'Serie' };
+
 export default function BrowsePage() {
   const { id } = useParams();
   const router = useRouter();
@@ -50,6 +53,7 @@ export default function BrowsePage() {
   const [activeCategory, setActiveCategory] = useState({});
   const [search, setSearch] = useState('');
   const isSearching = search.trim().length > 0;
+  const isFavoritesTab = activeTab === 'favorites';
 
   const tabConfig = TABS.find((t) => t.value === activeTab);
 
@@ -62,7 +66,7 @@ export default function BrowsePage() {
     isLoading: categoriesLoading,
     error: categoriesError,
     mutate: reloadCategories,
-  } = useSWR(playlist ? ['xtream-categories', playlist.id, activeTab] : null, () =>
+  } = useSWR(playlist && !isFavoritesTab ? ['xtream-categories', playlist.id, activeTab] : null, () =>
     xtreamRequest(playlist, tabConfig.catAction).then((res) => (Array.isArray(res) ? res : []))
   );
 
@@ -75,7 +79,7 @@ export default function BrowsePage() {
     error: categoryItemsError,
     mutate: reloadCategoryItems,
   } = useSWR(
-    !isSearching && playlist && currentCategoryId
+    !isFavoritesTab && !isSearching && playlist && currentCategoryId
       ? ['xtream-items', playlist.id, activeTab, currentCategoryId]
       : null,
     () =>
@@ -91,13 +95,17 @@ export default function BrowsePage() {
     isLoading: allItemsLoading,
     error: allItemsError,
     mutate: reloadAllItems,
-  } = useSWR(isSearching && playlist ? ['xtream-items-all', playlist.id, activeTab] : null, () =>
-    xtreamRequest(playlist, tabConfig.streamAction).then((res) => (Array.isArray(res) ? res : []))
+  } = useSWR(
+    !isFavoritesTab && isSearching && playlist ? ['xtream-items-all', playlist.id, activeTab] : null,
+    () => xtreamRequest(playlist, tabConfig.streamAction).then((res) => (Array.isArray(res) ? res : []))
   );
 
-  const items = isSearching ? allItems : categoryItems;
-  const itemsLoading = isSearching ? allItemsLoading : categoryItemsLoading;
-  const itemsError = isSearching ? allItemsError : categoryItemsError;
+  const favorites = useFavorites(playlist?.id);
+  const favoriteKeys = useFavoriteKeys(playlist?.id);
+
+  const items = isFavoritesTab ? favorites : isSearching ? allItems : categoryItems;
+  const itemsLoading = isFavoritesTab ? false : isSearching ? allItemsLoading : categoryItemsLoading;
+  const itemsError = isFavoritesTab ? null : isSearching ? allItemsError : categoryItemsError;
   const reloadItems = isSearching ? reloadAllItems : reloadCategoryItems;
 
   const categoryNameById = useMemo(() => {
@@ -114,7 +122,7 @@ export default function BrowsePage() {
   }, [items, search, isSearching]);
 
   const featuredItem =
-    !isSearching && activeTab !== 'live' && categoryItems && categoryItems.length > 0
+    !isFavoritesTab && !isSearching && activeTab !== 'live' && categoryItems && categoryItems.length > 0
       ? categoryItems[0]
       : null;
 
@@ -142,10 +150,27 @@ export default function BrowsePage() {
     }
   }
 
+  function openFavorite(fav) {
+    const title = encodeURIComponent(fav.name || '');
+    if (fav.kind === 'live') {
+      router.push(`/playlist/${id}/player?type=live&streamId=${fav.id}&title=${title}`);
+    } else if (fav.kind === 'movie') {
+      const ext = encodeURIComponent(fav.ext || 'mp4');
+      router.push(`/playlist/${id}/player?type=movie&streamId=${fav.id}&ext=${ext}&title=${title}`);
+    } else {
+      router.push(`/playlist/${id}/series/${fav.id}?title=${title}`);
+    }
+  }
+
   function openFeaturedDetails() {
     if (!featuredItem || activeTab !== 'series') return;
     const title = encodeURIComponent(featuredItem.name || '');
     router.push(`/playlist/${id}/series/${featuredItem.series_id}?title=${title}`);
+  }
+
+  function handleToggleFavorite(item) {
+    if (!playlist) return;
+    toggleFavorite(playlist.id, toFavoriteEntry(item, activeTab));
   }
 
   if (playlist === null) {
@@ -178,33 +203,39 @@ export default function BrowsePage() {
               item={featuredItem}
               onPlay={() => openItem(featuredItem)}
               onMoreInfo={activeTab === 'series' ? openFeaturedDetails : undefined}
+              favorited={favoriteKeys.has(
+                `${activeTab}:${featuredItem.stream_id || featuredItem.series_id}`
+              )}
+              onToggleFavorite={() => handleToggleFavorite(featuredItem)}
             />
           )}
 
-          <div className={styles.categorySection}>
-            {categoriesLoading && <SkeletonChips count={7} />}
-            {categoriesError && (
-              <ErrorState message={categoriesError.message} onRetry={() => reloadCategories()} />
-            )}
-            {!categoriesLoading && !categoriesError && (categories || []).length === 0 && (
-              <EmptyState message="Nenhuma categoria disponivel." />
-            )}
-            {!categoriesLoading && !categoriesError && (categories || []).length > 0 && (
-              <CategoryList
-                categories={categories}
-                activeId={isSearching ? null : currentCategoryId}
-                onSelect={selectCategory}
-              />
-            )}
-          </div>
+          {!isFavoritesTab && (
+            <div className={styles.categorySection}>
+              {categoriesLoading && <SkeletonChips count={7} />}
+              {categoriesError && (
+                <ErrorState message={categoriesError.message} onRetry={() => reloadCategories()} />
+              )}
+              {!categoriesLoading && !categoriesError && (categories || []).length === 0 && (
+                <EmptyState message="Nenhuma categoria disponivel." />
+              )}
+              {!categoriesLoading && !categoriesError && (categories || []).length > 0 && (
+                <CategoryList
+                  categories={categories}
+                  activeId={isSearching ? null : currentCategoryId}
+                  onSelect={selectCategory}
+                />
+              )}
+            </div>
+          )}
 
           <div className={styles.toolbar}>
             <SearchBox
               value={search}
               onChange={setSearch}
-              placeholder={`Buscar em ${tabConfig.label}...`}
+              placeholder={`Buscar em ${isFavoritesTab ? 'Favoritos' : tabConfig.label}...`}
             />
-            {isSearching && !itemsLoading && !itemsError && (
+            {isSearching && !isFavoritesTab && !itemsLoading && !itemsError && (
               <span className={styles.resultHint}>
                 {filteredItems.length}{' '}
                 {filteredItems.length === 1 ? 'resultado' : 'resultados'} em todas as categorias
@@ -223,22 +254,43 @@ export default function BrowsePage() {
           {!itemsLoading && !itemsError && filteredItems.length === 0 && (
             <EmptyState
               message={
-                isSearching ? `Nenhum resultado para "${search.trim()}".` : 'Nenhum item encontrado.'
+                isFavoritesTab
+                  ? 'Nenhum favorito ainda. Toque no coracao em um canal, filme ou serie para adiciona-lo aqui.'
+                  : isSearching
+                    ? `Nenhum resultado para "${search.trim()}".`
+                    : 'Nenhum item encontrado.'
               }
             />
           )}
           {!itemsLoading && !itemsError && filteredItems.length > 0 && (
             <MediaGrid columnWidth={activeTab === 'live' ? 170 : 150}>
-              {filteredItems.map((item) => (
-                <MediaCard
-                  key={item.stream_id || item.series_id}
-                  title={item.name}
-                  subtitle={isSearching ? categoryNameById.get(item.category_id) : undefined}
-                  image={item.stream_icon || item.cover}
-                  aspect={activeTab === 'live' ? 'landscape' : 'portrait'}
-                  onClick={() => openItem(item)}
-                />
-              ))}
+              {isFavoritesTab
+                ? filteredItems.map((fav) => (
+                    <MediaCard
+                      key={`${fav.kind}:${fav.id}`}
+                      title={fav.name}
+                      subtitle={KIND_LABEL[fav.kind]}
+                      image={fav.image}
+                      aspect={fav.kind === 'live' ? 'landscape' : 'portrait'}
+                      onClick={() => openFavorite(fav)}
+                      favorited
+                      onToggleFavorite={() => toggleFavorite(playlist.id, fav)}
+                    />
+                  ))
+                : filteredItems.map((item) => (
+                    <MediaCard
+                      key={item.stream_id || item.series_id}
+                      title={item.name}
+                      subtitle={isSearching ? categoryNameById.get(item.category_id) : undefined}
+                      image={item.stream_icon || item.cover}
+                      aspect={activeTab === 'live' ? 'landscape' : 'portrait'}
+                      onClick={() => openItem(item)}
+                      favorited={favoriteKeys.has(
+                        `${activeTab}:${item.stream_id || item.series_id}`
+                      )}
+                      onToggleFavorite={() => handleToggleFavorite(item)}
+                    />
+                  ))}
             </MediaGrid>
           )}
         </div>

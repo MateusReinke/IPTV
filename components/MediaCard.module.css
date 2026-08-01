@@ -4,6 +4,7 @@
   gap: 10px;
   text-align: left;
   width: 100%;
+  cursor: pointer;
   transition: transform 0.25s var(--ease);
 }
 
@@ -103,6 +104,39 @@
 .card:hover .playBadge svg,
 .card:focus-visible .playBadge svg {
   transform: scale(1);
+}
+
+.favBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(10, 8, 8, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #fff;
+  opacity: 0.7;
+  transition:
+    opacity 0.15s var(--ease),
+    background-color 0.15s var(--ease),
+    transform 0.15s var(--ease);
+}
+
+.favBtn:hover {
+  opacity: 1;
+  background: rgba(10, 8, 8, 0.8);
+  transform: scale(1.08);
+}
+
+.favBtnActive {
+  opacity: 1;
+  color: var(--accent);
 }
 
 .body {

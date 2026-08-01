@@ -1,5 +1,6 @@
 'use client';
 
+import HeartIcon from './HeartIcon';
 import styles from './NavRail.module.css';
 
 const ICONS = {
@@ -31,6 +32,17 @@ export default function NavRail({ tabs, active, onChange, onHome }) {
             </button>
           );
         })}
+        <div className={styles.divider} />
+        <button
+          type="button"
+          role="tab"
+          aria-selected={active === 'favorites'}
+          className={`${styles.item} ${active === 'favorites' ? styles.itemActive : ''}`}
+          onClick={() => onChange('favorites')}
+        >
+          <HeartIcon filled={active === 'favorites'} size={19} />
+          <span className={styles.label}>Favoritos</span>
+        </button>
       </div>
     </nav>
   );

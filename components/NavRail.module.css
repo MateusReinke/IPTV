@@ -68,6 +68,13 @@
   text-align: center;
 }
 
+.divider {
+  width: 60%;
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0;
+}
+
 @media (max-width: 760px) {
   .rail {
     width: 64px;

@@ -1,20 +1,24 @@
 :root {
-  --bg: #0b0b0e;
-  --bg-elevated: #18181e;
-  --surface: #232329;
-  --surface-hover: #2c2c34;
-  --surface-active: #38383f;
-  --border: #33333b;
-  --border-strong: #45454f;
-  --text: #f5f5f7;
+  --bg: #0c0808;
+  --bg-elevated: #191111;
+  --surface: #241a1a;
+  --surface-hover: #2d2020;
+  --surface-active: #392727;
+  --border: #3a2626;
+  --border-strong: #4d3030;
+  --text: #f5f5f5;
   --text-dim: #b8b8c2;
   --text-faint: #83838f;
-  --accent: #2dd4bf;
-  --accent-strong: #14b8a6;
-  --accent-soft: rgba(45, 212, 191, 0.14);
-  --accent-contrast: #04211d;
+  --accent: #e50914;
+  --accent-strong: #b20710;
+  --accent-soft: rgba(229, 9, 20, 0.16);
+  --accent-contrast: #ffffff;
   --danger: #f26262;
   --danger-bg: #3a1f22;
+  /* Kept independent from --accent: with a red brand accent, tying "active"
+     status to it would make it read the same as danger/expired states. */
+  --success: #3ecf8e;
+  --success-soft: rgba(62, 207, 142, 0.14);
   --radius-sm: 8px;
   --radius: 12px;
   --radius-lg: 18px;
@@ -42,8 +46,8 @@ body {
   flex-direction: column;
   color: var(--text);
   background:
-    radial-gradient(1200px 600px at 15% -10%, rgba(45, 212, 191, 0.07), transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, rgba(45, 212, 191, 0.05), transparent 55%),
+    radial-gradient(1200px 600px at 15% -10%, rgba(229, 9, 20, 0.1), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(229, 9, 20, 0.06), transparent 55%),
     var(--bg);
   background-attachment: fixed;
   font-family: var(--font-sans);

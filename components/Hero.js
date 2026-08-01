@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import Button from './Button';
+import HeartIcon from './HeartIcon';
 import styles from './Hero.module.css';
 
-export default function Hero({ kind, item, onPlay, onMoreInfo }) {
+export default function Hero({ kind, item, onPlay, onMoreInfo, favorited, onToggleFavorite }) {
   const [broken, setBroken] = useState(false);
   const title = item.name || '';
   const poster = item.stream_icon || item.cover;
@@ -46,6 +47,17 @@ export default function Hero({ kind, item, onPlay, onMoreInfo }) {
             <Button variant="secondary" onClick={onMoreInfo}>
               Mais informacoes
             </Button>
+          )}
+          {onToggleFavorite && (
+            <button
+              type="button"
+              className={`${styles.favBtn} ${favorited ? styles.favBtnActive : ''}`}
+              onClick={onToggleFavorite}
+              aria-label={favorited ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+              aria-pressed={!!favorited}
+            >
+              <HeartIcon filled={!!favorited} size={18} />
+            </button>
           )}
         </div>
       </div>
