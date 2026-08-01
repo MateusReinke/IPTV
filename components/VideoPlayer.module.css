@@ -1,11 +1,9 @@
 .wrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  height: 100%;
   background: #000;
-  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow-lg);
 }
 
 .video {
@@ -13,6 +11,7 @@
   height: 100%;
   display: block;
   background: #000;
+  object-fit: contain;
 }
 
 .overlay {

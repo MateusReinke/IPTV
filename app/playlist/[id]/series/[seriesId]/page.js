@@ -80,9 +80,14 @@ function SeriesDetailContent() {
 
   function openEpisode(ep, seasonNumber) {
     const label = `${name} · T${seasonNumber} E${ep.episode_num} · ${ep.title || ''}`;
-    const title = encodeURIComponent(label);
-    const ext = encodeURIComponent(ep.container_extension || 'mp4');
-    router.push(`/playlist/${id}/player?type=series&streamId=${ep.id}&ext=${ext}&title=${title}`);
+    const params = new URLSearchParams({
+      type: 'series',
+      streamId: String(ep.id),
+      ext: ep.container_extension || 'mp4',
+      title: label,
+      seriesId: String(seriesId),
+    });
+    router.push(`/playlist/${id}/player?${params.toString()}`);
   }
 
   return (

@@ -5,11 +5,19 @@ import Spinner from './Spinner';
 import Button from './Button';
 import styles from './VideoPlayer.module.css';
 
-export default function VideoPlayer({ src, isHls }) {
+export default function VideoPlayer({ src, isHls, onEnded }) {
   const videoRef = useRef(null);
   const [status, setStatus] = useState('loading');
   const [errorMessage, setErrorMessage] = useState('');
   const [retryKey, setRetryKey] = useState(0);
+
+  // Kept in a ref so the setup effect below doesn't need to depend on it -
+  // depending on it directly would tear down and reattach hls.js (restarting
+  // playback) on every parent re-render that passes a new closure.
+  const onEndedRef = useRef(onEnded);
+  useEffect(() => {
+    onEndedRef.current = onEnded;
+  }, [onEnded]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -31,8 +39,13 @@ export default function VideoPlayer({ src, isHls }) {
       setErrorMessage('Nao foi possivel reproduzir este conteudo.');
     }
 
+    function handleEnded() {
+      onEndedRef.current?.();
+    }
+
     video.addEventListener('canplay', handleCanPlay);
     video.addEventListener('error', handleVideoError);
+    video.addEventListener('ended', handleEnded);
 
     async function setup() {
       if (isHls) {
@@ -73,6 +86,7 @@ export default function VideoPlayer({ src, isHls }) {
       cancelled = true;
       video.removeEventListener('canplay', handleCanPlay);
       video.removeEventListener('error', handleVideoError);
+      video.removeEventListener('ended', handleEnded);
       if (hls) hls.destroy();
       video.removeAttribute('src');
       video.load();
