@@ -162,12 +162,6 @@ export default function BrowsePage() {
     }
   }
 
-  function openFeaturedDetails() {
-    if (!featuredItem || activeTab !== 'series') return;
-    const title = encodeURIComponent(featuredItem.name || '');
-    router.push(`/playlist/${id}/series/${featuredItem.series_id}?title=${title}`);
-  }
-
   function handleToggleFavorite(item) {
     if (!playlist) return;
     toggleFavorite(playlist.id, toFavoriteEntry(item, activeTab));
@@ -201,8 +195,7 @@ export default function BrowsePage() {
             <Hero
               kind={activeTab}
               item={featuredItem}
-              onPlay={() => openItem(featuredItem)}
-              onMoreInfo={activeTab === 'series' ? openFeaturedDetails : undefined}
+              onOpen={() => openItem(featuredItem)}
               favorited={favoriteKeys.has(
                 `${activeTab}:${featuredItem.stream_id || featuredItem.series_id}`
               )}

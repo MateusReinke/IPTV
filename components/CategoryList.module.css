@@ -3,8 +3,23 @@
   gap: 8px;
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 4px;
+  padding: 2px 4px 8px;
   scrollbar-width: thin;
+  /* Fades both edges as a hint that the row scrolls horizontally. */
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    black 20px,
+    black calc(100% - 20px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    black 20px,
+    black calc(100% - 20px),
+    transparent 100%
+  );
 }
 
 .chip {

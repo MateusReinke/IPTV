@@ -5,7 +5,7 @@ import Button from './Button';
 import HeartIcon from './HeartIcon';
 import styles from './Hero.module.css';
 
-export default function Hero({ kind, item, onPlay, onMoreInfo, favorited, onToggleFavorite }) {
+export default function Hero({ kind, item, onOpen, favorited, onToggleFavorite }) {
   const [broken, setBroken] = useState(false);
   const title = item.name || '';
   const poster = item.stream_icon || item.cover;
@@ -14,10 +14,23 @@ export default function Hero({ kind, item, onPlay, onMoreInfo, favorited, onTogg
   const genre = item.genre;
   const releaseDate = item.releaseDate || item.release_date;
   const plot = item.plot;
-  const kicker = kind === 'series' ? 'Serie em destaque' : 'Filme em destaque';
+  const isSeries = kind === 'series';
+  const kicker = isSeries ? 'Serie em destaque' : 'Filme em destaque';
+  const actionLabel = isSeries ? 'Ver episodios' : 'Assistir';
 
   return (
-    <section className={styles.hero}>
+    <section
+      className={styles.hero}
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen?.();
+        }
+      }}
+    >
       <span className={styles.poster}>
         {showImage ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -40,19 +53,23 @@ export default function Hero({ kind, item, onPlay, onMoreInfo, favorited, onTogg
         )}
         {plot && <p className={styles.plot}>{plot}</p>}
         <div className={styles.actions}>
-          <Button variant="primary" onClick={onPlay}>
-            <PlayIcon /> Assistir
+          <Button
+            variant="primary"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpen?.();
+            }}
+          >
+            {isSeries ? <ListIcon /> : <PlayIcon />} {actionLabel}
           </Button>
-          {onMoreInfo && (
-            <Button variant="secondary" onClick={onMoreInfo}>
-              Mais informacoes
-            </Button>
-          )}
           {onToggleFavorite && (
             <button
               type="button"
               className={`${styles.favBtn} ${favorited ? styles.favBtnActive : ''}`}
-              onClick={onToggleFavorite}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFavorite();
+              }}
               aria-label={favorited ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
               aria-pressed={!!favorited}
             >
@@ -69,6 +86,19 @@ function PlayIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
+
+function ListIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

@@ -40,25 +40,46 @@
 }
 
 .item {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   width: 100%;
-  padding: 11px 4px;
+  padding: 12px 4px;
   border-radius: var(--radius-sm);
   color: var(--text-faint);
-  transition: background-color 0.15s var(--ease), color 0.15s var(--ease);
+  transition:
+    background-color 0.15s var(--ease),
+    color 0.15s var(--ease),
+    transform 0.15s var(--ease);
 }
 
 .item:hover {
   color: var(--text);
   background: var(--surface);
+  transform: scale(1.04);
 }
 
 .itemActive {
   color: var(--accent);
   background: var(--accent-soft);
+}
+
+.itemActive::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.itemActive:hover {
+  transform: none;
 }
 
 .label {

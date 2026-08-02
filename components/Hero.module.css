@@ -9,6 +9,23 @@
   margin-bottom: 24px;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.2s var(--ease),
+    box-shadow 0.2s var(--ease),
+    transform 0.2s var(--ease);
+}
+
+.hero:hover,
+.hero:focus-visible {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-lg), 0 0 0 3px var(--accent-soft);
+  transform: translateY(-2px);
+}
+
+.hero:focus-visible {
+  outline: none;
 }
 
 .hero::before {
@@ -39,6 +56,12 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.3s var(--ease);
+}
+
+.hero:hover .posterImg,
+.hero:focus-visible .posterImg {
+  transform: scale(1.05);
 }
 
 .fallback {
