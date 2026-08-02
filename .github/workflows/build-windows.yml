@@ -1,0 +1,32 @@
+name: Build Windows app
+
+# Builds the electron-builder NSIS installer + portable .exe on a real Windows
+# runner (electron-builder's NSIS step needs Windows or Wine, neither of which
+# is available in the sandbox this workflow was authored from).
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run dist:win
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iptv-player-windows
+          path: |
+            dist/*.exe
+          if-no-files-found: error

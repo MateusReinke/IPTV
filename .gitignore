@@ -18,7 +18,11 @@
 /out/
 
 # production
-/build
+/build/*
+!/build/icon.ico
+
+# electron-builder output
+/dist/
 
 # misc
 .DS_Store
