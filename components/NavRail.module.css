@@ -8,9 +8,9 @@
   padding: 18px 10px;
   background: var(--bg-elevated);
   border-right: 1px solid var(--border);
-  height: 100dvh;
+  height: calc(100dvh - var(--app-header-h));
   position: sticky;
-  top: 0;
+  top: var(--app-header-h);
   /* Five entries plus the home button can outgrow a short viewport. */
   overflow-y: auto;
 }

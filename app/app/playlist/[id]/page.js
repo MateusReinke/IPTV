@@ -17,6 +17,8 @@ import {
   useHistory,
   useHistoryMap,
 } from '@/lib/history';
+import { useFeature } from '@/components/SessionProvider';
+import UpgradeNotice from '@/components/UpgradeNotice';
 import NavRail from '@/components/NavRail';
 import SearchBox from '@/components/SearchBox';
 import CategoryList from '@/components/CategoryList';
@@ -115,6 +117,9 @@ export default function BrowsePage() {
     () => xtreamRequest(playlist, tabConfig.streamAction).then((res) => (Array.isArray(res) ? res : []))
   );
 
+  // Watch history is a paid feature; favorites stay available to everyone.
+  const canSeeHistory = useFeature('history');
+
   const favorites = useFavorites(playlist?.id);
   const favoriteKeys = useFavoriteKeys(playlist?.id);
   const history = useHistory(playlist?.id);
@@ -150,7 +155,9 @@ export default function BrowsePage() {
       ? categoryItems[0]
       : null;
 
-  const showContinueShelf = !isLocalTab && !isSearching && continueWatching.length > 0;
+  const showContinueShelf =
+    canSeeHistory && !isLocalTab && !isSearching && continueWatching.length > 0;
+  const historyLocked = isHistoryTab && !canSeeHistory;
 
   function selectTab(tab) {
     setActiveTab(tab);
@@ -164,7 +171,7 @@ export default function BrowsePage() {
 
   function goToPlayer(params) {
     const query = new URLSearchParams(params);
-    router.push(`/playlist/${id}/player?${query.toString()}`);
+    router.push(`/app/playlist/${id}/player?${query.toString()}`);
   }
 
   function openItem(item) {
@@ -185,7 +192,7 @@ export default function BrowsePage() {
       });
     } else {
       router.push(
-        `/playlist/${id}/series/${item.series_id}?title=${encodeURIComponent(item.name || '')}`
+        `/app/playlist/${id}/series/${item.series_id}?title=${encodeURIComponent(item.name || '')}`
       );
     }
   }
@@ -208,7 +215,7 @@ export default function BrowsePage() {
       });
     } else {
       router.push(
-        `/playlist/${id}/series/${fav.id}?title=${encodeURIComponent(fav.name || '')}`
+        `/app/playlist/${id}/series/${fav.id}?title=${encodeURIComponent(fav.name || '')}`
       );
     }
   }
@@ -254,14 +261,14 @@ export default function BrowsePage() {
   if (playlist === null) {
     return (
       <main className={styles.shell}>
-        <ErrorState message="Playlist nao encontrada." onRetry={() => router.push('/')} />
+        <ErrorState message="Playlist nao encontrada." onRetry={() => router.push('/app')} />
       </main>
     );
   }
 
   return (
     <div className={styles.shell}>
-      <NavRail tabs={TABS} active={activeTab} onChange={selectTab} onHome={() => router.push('/')} />
+      <NavRail tabs={TABS} active={activeTab} onChange={selectTab} onHome={() => router.push('/app')} />
 
       <main className={styles.main}>
         <header className={styles.topHeader}>
@@ -275,6 +282,15 @@ export default function BrowsePage() {
         </header>
 
         <div className={styles.content}>
+          {historyLocked && (
+            <div className={styles.lockedSection}>
+              <UpgradeNotice
+                title="Historico e continuar assistindo"
+                message="Guardar o que voce ja assistiu, retomar de onde parou e sincronizar entre aparelhos fazem parte do Premium."
+              />
+            </div>
+          )}
+
           {showContinueShelf && (
             <Shelf title="Continuar assistindo" itemWidth={190} className={styles.continueShelf}>
               {continueWatching.map((entry) => (
@@ -305,7 +321,7 @@ export default function BrowsePage() {
             />
           )}
 
-          {!isLocalTab && (
+          {!isLocalTab && !historyLocked && (
             <div className={styles.categorySection}>
               {categoriesLoading && <SkeletonChips count={7} />}
               {categoriesError && (
@@ -324,6 +340,7 @@ export default function BrowsePage() {
             </div>
           )}
 
+          {!historyLocked && (
           <div className={styles.toolbar}>
             <SearchBox
               value={search}
@@ -344,16 +361,19 @@ export default function BrowsePage() {
               </Button>
             )}
           </div>
+          )}
 
-          {itemsLoading && (
+          {!historyLocked && itemsLoading && (
             <SkeletonGrid
               count={activeTab === 'live' ? 12 : 14}
               aspect={activeTab === 'live' ? 'landscape' : 'portrait'}
               columnWidth={activeTab === 'live' ? 170 : 150}
             />
           )}
-          {itemsError && <ErrorState message={itemsError.message} onRetry={() => reloadItems()} />}
-          {!itemsLoading && !itemsError && filteredItems.length === 0 && (
+          {!historyLocked && itemsError && (
+            <ErrorState message={itemsError.message} onRetry={() => reloadItems()} />
+          )}
+          {!historyLocked && !itemsLoading && !itemsError && filteredItems.length === 0 && (
             <EmptyState
               message={
                 isFavoritesTab
@@ -366,7 +386,7 @@ export default function BrowsePage() {
               }
             />
           )}
-          {!itemsLoading && !itemsError && filteredItems.length > 0 && (
+          {!historyLocked && !itemsLoading && !itemsError && filteredItems.length > 0 && (
             <MediaGrid columnWidth={activeTab === 'live' ? 170 : 150}>
               {isHistoryTab
                 ? filteredItems.map((entry) => (

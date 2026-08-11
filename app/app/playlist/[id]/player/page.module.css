@@ -3,6 +3,9 @@
   inset: 0;
   background: #000;
   overflow: hidden;
+  /* Above the app header (z-index 30): playback is meant to be immersive, and
+     without this the header sits on top of the back button. */
+  z-index: 40;
 }
 
 .stage {

@@ -14,6 +14,16 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# NEXT_PUBLIC_* values are inlined at build time. The defaults in the code are
+# fine for a first deploy; pass --build-arg to brand the build.
+ARG NEXT_PUBLIC_APP_NAME
+ARG NEXT_PUBLIC_TRIAL_DAYS
+ARG NEXT_PUBLIC_PRICE_MONTHLY
+ARG NEXT_PUBLIC_PRICE_YEARLY
+ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME \
+    NEXT_PUBLIC_TRIAL_DAYS=$NEXT_PUBLIC_TRIAL_DAYS \
+    NEXT_PUBLIC_PRICE_MONTHLY=$NEXT_PUBLIC_PRICE_MONTHLY \
+    NEXT_PUBLIC_PRICE_YEARLY=$NEXT_PUBLIC_PRICE_YEARLY
 RUN npm run build
 
 # ---- Run ----
@@ -29,12 +39,8 @@ COPY --from=builder /app/public ./public
 # Next.js "standalone" output: minimal server.js + only the traced node_modules.
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-# Where the optional sync account stores its (client-encrypted) blobs. Mount a
-# persistent volume here to keep favorites/history across redeploys; without
-# one the app still works, it just falls back to file backups.
-ENV IPTV_DATA_DIR=/app/data
-RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
+# Migrations are read from disk at runtime, so tracing does not pick them up.
+COPY --from=builder --chown=nextjs:nodejs /app/db ./db
 
 USER nextjs
 

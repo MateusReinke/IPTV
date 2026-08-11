@@ -48,7 +48,7 @@ function SeriesDetailContent() {
   if (playlist === null) {
     return (
       <main className={styles.page}>
-        <ErrorState message="Playlist nao encontrada." onRetry={() => router.push('/')} />
+        <ErrorState message="Playlist nao encontrada." onRetry={() => router.push('/app')} />
       </main>
     );
   }
@@ -56,7 +56,7 @@ function SeriesDetailContent() {
   if (isLoading || (!data && !error)) {
     return (
       <main className={styles.page}>
-        <TopBar title={fallbackTitle} onBack={() => router.push(`/playlist/${id}`)} />
+        <TopBar title={fallbackTitle} onBack={() => router.push(`/app/playlist/${id}`)} />
         <LoadingState label="Carregando serie..." />
       </main>
     );
@@ -65,7 +65,7 @@ function SeriesDetailContent() {
   if (error) {
     return (
       <main className={styles.page}>
-        <TopBar title={fallbackTitle} onBack={() => router.push(`/playlist/${id}`)} />
+        <TopBar title={fallbackTitle} onBack={() => router.push(`/app/playlist/${id}`)} />
         <ErrorState message={error.message} onRetry={() => reload()} />
       </main>
     );
@@ -94,7 +94,7 @@ function SeriesDetailContent() {
       seriesId: String(seriesId),
     });
     if (poster) params.set('poster', poster);
-    router.push(`/playlist/${id}/player?${params.toString()}`);
+    router.push(`/app/playlist/${id}/player?${params.toString()}`);
   }
 
   // The "continue" button needs the raw episode (for its container extension),
@@ -114,7 +114,7 @@ function SeriesDetailContent() {
 
   return (
     <main className={styles.page}>
-      <TopBar title={name} onBack={() => router.push(`/playlist/${id}`)} />
+      <TopBar title={name} onBack={() => router.push(`/app/playlist/${id}`)} />
 
       <div className={styles.hero}>
         <span className={styles.poster}>

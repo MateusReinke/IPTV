@@ -15,6 +15,9 @@ import {
 } from '@/lib/history';
 import { playableUrl, xtreamRequest } from '@/lib/xtream';
 import VideoPlayer from '@/components/VideoPlayer';
+import { usePlaybackSlot } from '@/components/PlaybackProvider';
+import { useFeature } from '@/components/SessionProvider';
+import UpgradeNotice from '@/components/UpgradeNotice';
 import { ErrorState, LoadingState } from '@/components/StateMessage';
 import styles from './page.module.css';
 
@@ -56,6 +59,15 @@ function PlayerContent() {
   const [controlsVisible, setControlsVisible] = useState(true);
   const [noticeDoneFor, setNoticeDoneFor] = useState(null);
   const idleTimerRef = useRef(null);
+
+  // One picture on screen = one lease. The token that comes back is what lets
+  // /api/stream serve bytes, so a plan at its screen limit lands here.
+  const { token, tokenRef, error: slotError, retry: retrySlot } = usePlaybackSlot(
+    'player',
+    title,
+    !!streamId
+  );
+  const canSaveHistory = useFeature('history');
 
   const armIdleTimer = useCallback(() => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
@@ -100,8 +112,8 @@ function PlayerContent() {
   // live history entry would feed the position written every few seconds back
   // into the player. Recomputing only when the stream changes freezes it.
   const resumeAt = useMemo(
-    () => (hydrated ? resumePosition(readHistoryEntry(id, kind, streamId)) : 0),
-    [hydrated, id, kind, streamId]
+    () => (hydrated && canSaveHistory ? resumePosition(readHistoryEntry(id, kind, streamId)) : 0),
+    [canSaveHistory, hydrated, id, kind, streamId]
   );
 
   const goToEpisode = useCallback(
@@ -117,7 +129,7 @@ function PlayerContent() {
         seriesId: String(seriesId),
       });
       if (seriesPoster) params.set('poster', seriesPoster);
-      router.replace(`/playlist/${id}/player?${params.toString()}`);
+      router.replace(`/app/playlist/${id}/player?${params.toString()}`);
     },
     [id, router, seriesId, seriesName, seriesPoster, showControls]
   );
@@ -132,18 +144,18 @@ function PlayerContent() {
 
   const handleProgress = useCallback(
     (position, duration, { completed } = {}) => {
-      if (!playlistReady) return;
+      if (!playlistReady || !canSaveHistory) return;
       saveProgress(id, kind, streamId, position, duration);
       if (completed) markCompleted(id, kind, streamId);
     },
-    [id, kind, playlistReady, streamId]
+    [canSaveHistory, id, kind, playlistReady, streamId]
   );
 
   // Records the item as watched. Runs again once the series metadata lands so
   // the entry gets the real series name / season / episode instead of the
   // label carried in the URL.
   useEffect(() => {
-    if (!hydrated || !playlistReady || !streamId) return;
+    if (!hydrated || !playlistReady || !streamId || !canSaveHistory) return;
     recordPlayback(id, {
       kind,
       id: streamId,
@@ -156,6 +168,7 @@ function PlayerContent() {
       episodeTitle: currentEpisode?.title,
     });
   }, [
+    canSaveHistory,
     hydrated,
     playlistReady,
     id,
@@ -203,7 +216,7 @@ function PlayerContent() {
     return (
       <main className={styles.page}>
         <div className={styles.stateWrap}>
-          <ErrorState message="Playlist nao encontrada." onRetry={() => router.push('/')} />
+          <ErrorState message="Playlist nao encontrada." onRetry={() => router.push('/app')} />
         </div>
       </main>
     );
@@ -215,14 +228,40 @@ function PlayerContent() {
         <div className={styles.stateWrap}>
           <ErrorState
             message="Conteudo invalido para reproducao."
-            onRetry={() => router.push(`/playlist/${id}`)}
+            onRetry={() => router.push(`/app/playlist/${id}`)}
           />
         </div>
       </main>
     );
   }
 
-  const src = playableUrl(playlist, kind, streamId, ext);
+  if (slotError) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.stateWrap}>
+          <UpgradeNotice
+            title={slotError.code === 'SCREEN_LIMIT' ? 'Limite de telas atingido' : 'Nao foi possivel iniciar'}
+            message={slotError.message}
+            showUpgrade={slotError.code === 'SCREEN_LIMIT'}
+            onRetry={retrySlot}
+            onBack={() => router.push(`/app/playlist/${id}`)}
+          />
+        </div>
+      </main>
+    );
+  }
+
+  if (!token) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.stateWrap}>
+          <LoadingState label="Liberando a reproducao..." />
+        </div>
+      </main>
+    );
+  }
+
+  const src = playableUrl(playlist, kind, streamId, ext, token);
 
   return (
     <main className={styles.page}>
@@ -240,6 +279,7 @@ function PlayerContent() {
           onEnded={handleEnded}
           onProgress={handleProgress}
           startPosition={resumeAt}
+          tokenRef={tokenRef}
         />
 
         <div className={`${styles.overlayTop} ${controlsVisible ? '' : styles.hidden}`}>

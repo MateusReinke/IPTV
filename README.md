@@ -1,180 +1,207 @@
-# IPTV Player
+# Multitela
 
-Cliente web para assistir playlists IPTV via protocolo **Xtream Codes**
-(`player_api.php`) — o formato de login usado pela maioria dos
-provedores/painéis IPTV (URL do servidor + usuário + senha).
+Player IPTV (padrão **Xtream Codes**) vendido como assinatura, cujo diferencial
+é a **multitela**: várias transmissões ao vivo ao mesmo tempo, com o áudio
+saindo da tela que você escolher — feito para quem acompanha vários jogos na
+mesma rodada.
 
-## Funcionalidades
+O repositório contém o produto inteiro: site de divulgação, cadastro com teste
+grátis, player, multitela, cobrança e painel de controle de assinantes.
 
-- Tela "Adicionar playlist" (título, URL do servidor, usuário, senha), com
-  validação dos campos
-- Múltiplas playlists salvas no navegador, sem precisar de conta/backend
-- TV ao vivo, Filmes (VOD) e Séries, com categorias e busca
-- Favoritos por playlist e **histórico do que já foi assistido**
-- "Continuar assistindo": o player retoma de onde você parou, marca
-  episódios já vistos e some com o que já terminou
-- Página de série com temporadas e episódios
-- Player de vídeo com suporte a HLS (`.m3u8`) via `hls.js`
-- **Backup em arquivo** e **sincronização opcional entre aparelhos**, com os
-  dados criptografados no navegador antes de subir (veja
-  [Não perder favoritos e histórico](#não-perder-favoritos-e-histórico))
-- Proxy de API e de stream no servidor, para evitar bloqueios de
-  CORS/"mixed content" quando o painel IPTV usa `http://` e o app roda em
-  `https://`
+## Como o produto se divide
 
-## Como rodar localmente
+| Área | Rota | O que é |
+| --- | --- | --- |
+| Divulgação | `/` | Landing page pública com recursos, planos e FAQ |
+| Cadastro/login | `/criar-conta`, `/entrar` | Conta com teste de 7 dias automático |
+| App | `/app` | Playlists salvas |
+| Navegação | `/app/playlist/[id]` | TV ao vivo, filmes, séries, favoritos, histórico |
+| Player | `/app/playlist/[id]/player` | Player com retomada de onde parou |
+| **Multitela** | `/app/multiview` | Grade de 1 a 9 canais, áudio selecionável |
+| Conta | `/app/conta` | Plano, assinatura, backup e sincronização |
+| Painel | `/admin` | Métricas e gestão de assinantes |
 
-Requer Node.js 20+.
+## Planos e o que cada um libera
+
+| | Grátis (após o teste) | Teste (7 dias) | Premium |
+| --- | --- | --- | --- |
+| Telas simultâneas | 1 | 9 | 9 |
+| Áudio selecionável | — | ✓ | ✓ |
+| Histórico / continuar assistindo | — | ✓ | ✓ |
+| Sincronização entre aparelhos | — | ✓ | ✓ |
+| Favoritos e backup em arquivo | ✓ | ✓ | ✓ |
+
+Os limites são definidos em `lib/entitlements.js` e **aplicados no servidor** —
+mudar o plano é uma linha, e nenhum limite depende do que o navegador diz.
+
+### Como o limite de telas é realmente imposto
+
+Bloquear só na interface não sustenta uma assinatura: bastaria abrir outra aba.
+O caminho é:
+
+1. Cada imagem em tela pede um **lease** em `POST /api/play/lease`, informando
+   o seu identificador de tela.
+2. O servidor conta os leases vivos da conta (heartbeat a cada 30s, expiram em
+   90s). Passou do limite do plano → `402` com o motivo, e a interface mostra o
+   convite para assinar no lugar do vídeo.
+3. Dentro do limite, o servidor devolve um **token assinado (HMAC)**.
+4. `/api/stream` só entrega bytes com um token válido. Como a verificação é
+   apenas uma assinatura, o caminho quente (uma requisição por segmento HLS)
+   não toca o banco.
+
+Efeito colateral bem-vindo: o proxy de streaming deixa de ser aberto ao mundo.
+Ao fechar a aba, os leases são liberados na hora (`sendBeacon`) e, na pior das
+hipóteses, expiram sozinhos.
+
+## Rodando localmente
+
+Requer Node.js 20+ e um Postgres.
 
 ```bash
+cp .env.example .env.local     # preencha DATABASE_URL e as chaves
 npm install
 npm run dev
 ```
 
-Abra http://localhost:3000, clique em "Adicionar playlist" e informe os
-dados fornecidos pelo seu provedor IPTV (URL do servidor, usuário e senha).
+As migrações (`db/migrations/*.sql`) rodam sozinhas na primeira requisição,
+protegidas por um advisory lock — subir várias instâncias ao mesmo tempo é
+seguro.
 
-## Build de produção
-
-```bash
-npm run build
-npm start
-```
-
-A aplicação é um único app Next.js (frontend + rotas de API), então pode ser
-implantada em qualquer plataforma com suporte a Node.js ou Docker (Coolify,
-Vercel, Railway, um VPS com `npm start`/PM2, etc.). Veja a seção
-[Deploy com Coolify](#deploy-com-coolify) abaixo.
-
-Também é possível buildar e rodar via Docker diretamente:
+Gere as chaves obrigatórias com:
 
 ```bash
-docker build -t iptv-player .
-docker run -p 3000:3000 iptv-player
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"  # APP_ENCRYPTION_KEY
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"     # STREAM_TOKEN_SECRET
 ```
 
-## Não perder favoritos e histórico
+Coloque seu e-mail em `ADMIN_EMAILS` para que a conta vire admin ao se
+cadastrar e o painel `/admin` apareça.
 
-Favoritos e histórico ficam gravados no `localStorage` do navegador. Isso é
-rápido, funciona offline e não exige login — mas some se você limpar os dados
-do navegador, e não acompanha você para o celular ou para a TV. O app oferece
-três níveis; use o que fizer sentido para o seu caso.
+## Cobrança
 
-### 1. Local (padrão, nada a configurar)
+`lib/server/billing.js` isola o provedor atrás de três funções
+(`startCheckout`, `openPortal`, `applyProviderEvent`). O que vem pronto:
 
-Playlists, favoritos e histórico são gravados em um único documento
-(`iptv.library.v1`). Cada item tem uma marca de tempo, e remoções deixam um
-"tombstone" em vez de sumir — é isso que permite juntar duas cópias sem
-ressuscitar o que você apagou em outro aparelho.
+- **Stripe** (Checkout + portal do cliente + webhook assinado). Configure
+  `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY` e
+  `STRIPE_PRICE_YEARLY`, e aponte o webhook para `POST /api/billing/webhook`
+  (eventos `checkout.session.completed` e `customer.subscription.*`).
+- **Liberação manual** pelo painel: `+30d Premium`, `+7d teste`, `Revogar`.
+  Funciona sem nenhuma configuração e é o caminho para vender por PIX ou
+  transferência antes de ligar o pagamento online.
 
-### 2. Backup em arquivo (recomendado para todo mundo)
+Para trocar por Mercado Pago (PIX/boleto), implemente as mesmas três funções e
+a verificação de assinatura do webhook; nada mais no app precisa mudar.
 
-Na tela inicial: **Exportar backup** baixa um `.json` com tudo, e **Importar
-backup** junta o arquivo com o que já existe no aparelho (nunca sobrescreve
-cegamente: vale sempre a alteração mais recente de cada item). É o jeito mais
-simples de dormir tranquilo e não depende de nenhuma infraestrutura.
+> A integração com o Stripe está escrita e revisada, mas **não foi exercitada
+> contra a API real** — não havia chaves neste ambiente. Rode um pagamento de
+> teste no modo sandbox antes de abrir para o público. Todo o resto (teste
+> grátis, limites, painel, liberação manual) foi testado ponta a ponta.
 
-### 3. Conta de sincronização (para usar em vários aparelhos)
+## Painel de controle (`/admin`)
 
-Em vez de e-mail e senha, você gera um **código de sincronização** de 20
-caracteres. A partir dele o navegador deriva duas coisas:
+- Contas, contas em teste, assinantes, expirados e ativos nas últimas 24h
+- Receita recorrente estimada e cadastros dos últimos 30 dias
+- Tabela de assinantes com busca e filtros, e as ações: liberar Premium,
+  estender teste, revogar, suspender/reativar e gerar link de redefinição de
+  senha (não há envio de e-mail ainda — veja *Limitações*)
+- Toda ação administrativa grava uma linha de auditoria
 
-- o identificador que o servidor usa para guardar o arquivo
-  (`SHA-256` do código);
-- a chave de criptografia (`PBKDF2` → `AES-GCM`).
+## Dados do usuário
 
-O navegador criptografa a biblioteca inteira **antes** de enviar, então o
-servidor guarda apenas um blob opaco: quem tiver acesso ao disco da sua
-instância não consegue ler suas credenciais nem o que você assistiu. Digite o
-mesmo código em outro aparelho para que os dois se juntem (a fusão é
-bidirecional e roda sozinha ao abrir o app, ao voltar para a aba e alguns
-segundos depois de qualquer mudança).
+Playlists, favoritos e histórico vivem em um único documento local
+(`lib/library.js`), com carimbo de tempo por item e *tombstones* nas remoções.
+É isso que permite mesclar duas cópias sem ressuscitar o que foi apagado em
+outro aparelho — a mesma regra vale para o backup em arquivo e para a
+sincronização.
 
-Pontos importantes:
+Quem tem plano pago sincroniza esse documento com a conta
+(`/api/library`), criptografado em repouso com `APP_ENCRYPTION_KEY`. Quem não
+tem continua com tudo no navegador e pode exportar/importar um arquivo JSON.
 
-- **O código é a única chave.** Se você perdê-lo, não há recuperação —
-  anote-o. Qualquer pessoa que tenha o código consegue ler seus dados.
-- Sincronizar as credenciais das playlists é opcional (caixinha no painel).
-  Ligado, trocar de aparelho não exige redigitar usuário e senha do provedor.
-- Requer **https://** (ou `localhost`), porque a API de criptografia do
-  navegador só existe em contexto seguro.
-- Requer um diretório gravável no servidor, definido em `IPTV_DATA_DIR`.
-  Sem ele o app avisa e continua funcionando — só o backup em arquivo fica
-  disponível.
+## Deploy (Coolify, Docker ou qualquer host Node)
 
-### Qual escolher?
+O `Dockerfile` é multi-stage e usa o output `standalone` do Next.js.
 
-Se você usa um aparelho só, o **backup em arquivo** já resolve. Se assiste no
-celular e na TV, ative a **sincronização** — ela cobre o backup também. Um
-banco de dados com contas de verdade (e-mail + senha) seria excesso aqui: mais
-peças para manter e credenciais de IPTV em texto puro no servidor, em troca de
-pouca coisa para uso pessoal.
+1. **+ New → Application**, selecione o repositório; o build pack `Dockerfile` é
+   detectado sozinho.
+2. Crie um **Postgres** no Coolify e ligue os dois, ou aponte `DATABASE_URL`
+   para um banco gerenciado (`DATABASE_SSL=true` costuma ser necessário).
+3. Configure as variáveis de `.env.example`. As `NEXT_PUBLIC_*` precisam
+   existir **no build** (aba *Build → Build Arguments*), porque são embutidas
+   no bundle.
+4. **Port** `3000`; defina o domínio e deixe o Coolify emitir o HTTPS.
+5. Nenhum volume é necessário: tudo persistente está no Postgres.
 
-## Deploy com Coolify
+## Aplicativos para Android e iOS
 
-O repositório já inclui um `Dockerfile` (multi-stage, usando o output
-`standalone` do Next.js), então o Coolify detecta e builda automaticamente:
+O app já é instalável (manifest em `/manifest.webmanifest`, ícones em
+`public/`), o que cobre o "instalar na tela inicial". Para as lojas:
 
-1. No Coolify: **+ New** → **Application** → escolha a fonte (GitHub App ou
-   repositório público) e selecione este repositório e a branch desejada
-   (`main`, após o merge da PR).
-2. **Build Pack**: `Dockerfile` (auto-detectado). Não é necessário configurar
-   comandos de build/start manualmente.
-3. **Port**: `3000` (já exposto no `Dockerfile`).
-4. **Variáveis de ambiente**: nenhuma é obrigatória. O `Dockerfile` já define
-   `IPTV_DATA_DIR=/app/data`, usado apenas pela sincronização opcional.
-5. Defina um domínio na aba **Domains**; o Coolify emite HTTPS
-   automaticamente (Let's Encrypt) assim que o DNS apontar para o servidor.
-6. **Deploy**. Para redeploy automático a cada push, ative o webhook em
-   **Automations**/**Webhooks** da aplicação.
+- **Play Store**: empacote com [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap)
+  como TWA. Exige `assetlinks.json` no domínio e um HTTPS válido.
+- **App Store**: a Apple rejeita webview pura sem valor adicional; o caminho
+  usual é um shell nativo (Capacitor) com push e player nativo. Reserve tempo
+  para isso.
+- **Regra das lojas**: assinaturas vendidas dentro do app precisam usar a
+  cobrança da própria loja (comissão de 15–30%). Vender no site e apenas
+  *entregar* o acesso no aplicativo é o arranjo que a maioria adota — mais um
+  motivo para a landing page e o checkout ficarem na web.
 
-### Volume persistente (só para a sincronização)
-
-Sem volume a aplicação funciona normalmente: playlists, favoritos e histórico
-ficam no navegador, e o backup em arquivo continua disponível. Se você quiser
-usar a **conta de sincronização**, adicione em **Storages** um volume
-persistente montado em `/app/data` — é onde ficam os blobs criptografados de
-cada código de sincronização. Sem ele, o app avisa que a sincronização não
-está habilitada neste servidor.
+A API já aceita `Authorization: Bearer <token>` além do cookie, então um app
+nativo usa exatamente os mesmos endpoints.
 
 ## Arquitetura
 
-- `app/page.js` — playlists salvas e formulário de login
-- `app/playlist/[id]/page.js` — navegação por TV ao vivo / Filmes / Séries
-- `app/playlist/[id]/series/[seriesId]/page.js` — temporadas e episódios
-- `app/playlist/[id]/player/page.js` — player de vídeo
-- `app/api/xtream/route.js` — proxy server-side para `player_api.php`
-- `app/api/stream/route.js` — proxy server-side dos streams (reescreve
-  playlists `.m3u8` para que os segmentos também passem pelo proxy)
-- `app/api/library/route.js` — armazenamento dos blobs criptografados da
-  sincronização (GET/PUT/DELETE por código)
-- `lib/xtream.js` — helpers para montar URLs e chamar a API Xtream
-- `lib/library.js` — documento local (playlists + favoritos + histórico),
-  com tombstones e a regra de fusão usada por backup e sincronização
-- `lib/playlists.js`, `lib/favorites.js`, `lib/history.js` — leituras e
-  escritas de cada seção da biblioteca
-- `lib/sync.js` — código de sincronização, criptografia no navegador e
-  fusão automática entre aparelhos
-- `lib/backup.js` — exportar/importar a biblioteca em arquivo
-- `Dockerfile` — build multi-stage com output `standalone` do Next.js, usado
-  pelo Coolify (ou qualquer plataforma baseada em Docker)
+```
+app/
+  page.js                     landing page pública
+  entrar|criar-conta|redefinir-senha
+  app/                        área logada (layout exige sessão)
+    playlist/[id]/...         navegação, série e player
+    multiview/                a multitela
+    conta/                    plano, assinatura, backup
+  admin/                      painel do operador
+  api/
+    auth/*                    cadastro, login, sessão, redefinição
+    play/lease                leases + emissão do token de reprodução
+    stream                    proxy de bytes (exige token)
+    xtream                    proxy do player_api.php (exige sessão)
+    library                   sincronização da biblioteca (exige plano)
+    billing/*                 checkout, portal e webhook
+    admin/*                   métricas, listagem e ações
+lib/
+  entitlements.js             planos e o que cada um libera (cliente+servidor)
+  library.js                  documento local + regra de merge
+  favorites.js history.js     seções da biblioteca
+  sync.js backup.js           sincronização e backup em arquivo
+  multiview.js                estado da grade
+  server/
+    db.js                     pool + migrações automáticas
+    auth.js                   senhas (scrypt) e sessões
+    leases.js playToken.js    limite de telas e tokens de reprodução
+    libraryStore.js           biblioteca criptografada em repouso
+    billing.js                adaptador de pagamento (Stripe)
+    admin.js                  métricas e ações administrativas
+db/migrations/                SQL aplicado automaticamente
+```
 
-## Sobre as credenciais
+## Limitações conhecidas
 
-As credenciais de cada playlist ficam salvas **no `localStorage` do seu
-navegador** — não há banco de dados nem conta de usuário. Isso é adequado
-para uso pessoal. Se for hospedar o app publicamente, lembre-se de que
-qualquer pessoa com acesso à URL poderá usar o proxy para consultar qualquer
-servidor Xtream que ela mesma informar nos campos do formulário.
-
-As credenciais só saem do navegador se você ativar a sincronização **e**
-deixar marcada a opção de incluir as playlists. Mesmo nesse caso elas são
-criptografadas no navegador antes do upload, e o servidor guarda apenas o
-resultado — mas quem tiver o seu código de sincronização consegue abri-las,
-então trate o código como uma senha.
+- **Sem e-mail transacional.** Não há "esqueci minha senha" self-service: o
+  admin gera um link de redefinição (válido por 2h) e entrega ao usuário. Ligar
+  um SMTP e disparar esse mesmo link fecha a lacuna.
+- **Stripe não exercitado ao vivo** (veja acima).
+- **Rate limit em memória**, por instância (`lib/server/rateLimit.js`). Serve
+  para conter força bruta; com várias réplicas, mova para o Postgres ou Redis.
+- **Token de reprodução com validade de 6h**, para que um filme longo continue
+  tocando. Quem extrair o token pode reusá-lo nesse intervalo — aceitável
+  porque obtê-lo já exige uma conta ativa.
+- **Nove telas exigem uma máquina razoável.** São nove decodificadores de vídeo
+  simultâneos; em celulares antigos, quatro já é bastante.
 
 ## Aviso
 
 Este é um cliente genérico para o protocolo Xtream Codes: ele não fornece,
-hospeda nem indica nenhum conteúdo. É necessário ter suas próprias
-credenciais de um provedor IPTV.
+hospeda nem indica nenhum conteúdo. Cada usuário precisa das credenciais do seu
+próprio provedor IPTV.

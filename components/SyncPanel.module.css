@@ -53,6 +53,19 @@
   border-color: transparent;
 }
 
+.badge_blocked {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+
+.inlineLink {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .block {
   display: flex;
   flex-direction: column;

@@ -1,6 +1,6 @@
 .shell {
   display: flex;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--app-header-h));
 }
 
 .main {
@@ -19,7 +19,7 @@
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
   position: sticky;
-  top: 0;
+  top: var(--app-header-h);
   background: rgba(11, 11, 14, 0.75);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -38,6 +38,10 @@
   padding: 24px 28px 60px;
   flex: 1;
   min-width: 0;
+}
+
+.lockedSection {
+  margin-bottom: 24px;
 }
 
 .continueShelf {

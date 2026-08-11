@@ -6,7 +6,15 @@
 //    fetches of .m3u8/.ts segments.
 // For .m3u8 playlists we rewrite every segment/sub-playlist URL to route back
 // through this same proxy, recursively.
+//
+// Access requires a play token issued by /api/play/lease: that is what keeps
+// the proxy from being an open relay and what makes the per-plan screen limit
+// enforceable. Verification is a signature check, so the hot path (one request
+// per segment) never touches the database.
 
+import { verifyPlayToken } from '@/lib/server/playToken';
+
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const UPSTREAM_HEADERS = { 'User-Agent': 'Mozilla/5.0 (compatible; IPTV-Client/1.0)' };
@@ -16,21 +24,25 @@ function isPlaylist(contentType, pathname) {
   return /\.m3u8($|\?)/i.test(pathname);
 }
 
-function rewritePlaylist(text, baseUrl) {
+function proxied(absoluteUrl, token) {
+  return `/api/stream?url=${encodeURIComponent(absoluteUrl)}&t=${encodeURIComponent(token)}`;
+}
+
+function rewritePlaylist(text, baseUrl, token) {
   const lines = text.split(/\r?\n/);
   const out = lines.map((line) => {
     if (line.startsWith('#')) {
       const uriMatch = line.match(/URI="([^"]+)"/);
       if (uriMatch) {
         const abs = new URL(uriMatch[1], baseUrl).toString();
-        return line.replace(uriMatch[0], `URI="/api/stream?url=${encodeURIComponent(abs)}"`);
+        return line.replace(uriMatch[0], `URI="${proxied(abs, token)}"`);
       }
       return line;
     }
     const trimmed = line.trim();
     if (!trimmed) return line;
     const abs = new URL(trimmed, baseUrl).toString();
-    return `/api/stream?url=${encodeURIComponent(abs)}`;
+    return proxied(abs, token);
   });
   return out.join('\n');
 }
@@ -38,8 +50,21 @@ function rewritePlaylist(text, baseUrl) {
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const target = searchParams.get('url');
+  const token = searchParams.get('t') || '';
+
   if (!target) {
     return new Response('Missing url parameter', { status: 400 });
+  }
+
+  let claim;
+  try {
+    claim = verifyPlayToken(token);
+  } catch (err) {
+    return new Response(err.message, { status: 503 });
+  }
+  if (!claim) {
+    // 401 rather than 403: the client's move is to renew its lease.
+    return new Response('Play token invalido ou expirado', { status: 401 });
   }
 
   let targetUrl;
@@ -72,7 +97,7 @@ export async function GET(request) {
 
   if (isPlaylist(contentType, targetUrl.pathname)) {
     const text = await upstream.text();
-    const rewritten = rewritePlaylist(text, targetUrl);
+    const rewritten = rewritePlaylist(text, targetUrl, token);
     return new Response(rewritten, {
       status: upstream.status,
       headers: {

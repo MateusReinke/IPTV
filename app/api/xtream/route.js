@@ -1,10 +1,19 @@
 import { buildPlayerApiUrl } from '@/lib/xtream';
+import { getRequestAuth } from '@/lib/server/auth';
 
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ALLOWED_PARAMS = ['category_id', 'series_id', 'vod_id', 'stream_id', 'limit'];
 
 export async function GET(request) {
+  // Catalog calls are not on the hot path, so a session lookup per request is
+  // affordable - and it stops the proxy being usable by anyone with the URL.
+  const auth = await getRequestAuth(request);
+  if (!auth) {
+    return Response.json({ error: 'Faca login para carregar a playlist' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const server = searchParams.get('server');
   const username = searchParams.get('username');

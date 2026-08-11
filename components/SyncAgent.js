@@ -2,11 +2,12 @@
 
 import { useEffect } from 'react';
 import { startAutoSync } from '@/lib/sync';
+import { useFeature } from './SessionProvider';
 
-// Mounted once from Providers: keeps the local library and the (optional)
-// sync account in step without any page having to think about it. No-op
-// until the user actually sets up a sync code.
+// Mounted once from the app layout: keeps the local library and the account's
+// cloud copy in step. Turns itself off when the plan does not include sync.
 export default function SyncAgent() {
-  useEffect(() => startAutoSync(), []);
+  const canSync = useFeature('sync');
+  useEffect(() => startAutoSync(canSync), [canSync]);
   return null;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { withPlayToken } from '@/lib/xtream';
 import Spinner from './Spinner';
 import Button from './Button';
 import styles from './VideoPlayer.module.css';
@@ -20,7 +21,21 @@ const BLACK_FRAME_MESSAGE =
 // would write to localStorage (and re-render subscribers) for no real gain.
 const PROGRESS_INTERVAL_MS = 5000;
 
-export default function VideoPlayer({ src, isHls, ext, onEnded, onProgress, startPosition = 0 }) {
+export default function VideoPlayer({
+  src,
+  isHls,
+  ext,
+  onEnded,
+  onProgress,
+  startPosition = 0,
+  // Ref holding the current play token. Kept as a ref (not a prop value) so a
+  // token refresh mid-stream never re-runs the setup effect and restarts
+  // playback - see the hls.js xhrSetup below.
+  tokenRef,
+  muted = false,
+  controls = true,
+  className = '',
+}) {
   const videoRef = useRef(null);
   const [status, setStatus] = useState('loading');
   const [errorMessage, setErrorMessage] = useState('');
@@ -44,6 +59,14 @@ export default function VideoPlayer({ src, isHls, ext, onEnded, onProgress, star
   useEffect(() => {
     startPositionRef.current = startPosition;
   }, [startPosition]);
+
+  // Multiview switches audio between tiles constantly. React's `muted` prop
+  // is applied as an attribute, which the element ignores after load, so drive
+  // the property directly.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) video.muted = muted;
+  }, [muted]);
 
   const containerExt = (ext || '').toLowerCase().replace(/^\./, '');
   const unsupportedContainer = !isHls && UNSUPPORTED_CONTAINERS.has(containerExt);
@@ -159,7 +182,15 @@ export default function VideoPlayer({ src, isHls, ext, onEnded, onProgress, star
           setErrorMessage('Seu navegador nao suporta reproducao deste formato.');
           return;
         }
-        hls = new Hls({ maxBufferLength: 30 });
+        hls = new Hls({
+          maxBufferLength: 30,
+          // Every segment request is re-signed with the freshest token, so a
+          // long live session outlives the token it started with.
+          xhrSetup: (xhr, url) => {
+            const token = tokenRef?.current;
+            xhr.open('GET', token ? withPlayToken(url, token) : url, true);
+          },
+        });
         hls.on(Hls.Events.ERROR, (_event, data) => {
           if (cancelled || !data.fatal) return;
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
@@ -198,7 +229,7 @@ export default function VideoPlayer({ src, isHls, ext, onEnded, onProgress, star
       video.removeAttribute('src');
       video.load();
     };
-  }, [src, isHls, ext, unsupportedContainer, retryKey]);
+  }, [src, isHls, ext, unsupportedContainer, retryKey, tokenRef]);
 
   const displayStatus = unsupportedContainer ? 'error' : status;
   const displayMessage = unsupportedContainer
@@ -207,8 +238,15 @@ export default function VideoPlayer({ src, isHls, ext, onEnded, onProgress, star
   const displayOfferLink = unsupportedContainer || offerExternalLink;
 
   return (
-    <div className={styles.wrap}>
-      <video ref={videoRef} className={styles.video} controls autoPlay playsInline />
+    <div className={`${styles.wrap} ${className}`.trim()}>
+      <video
+        ref={videoRef}
+        className={styles.video}
+        controls={controls}
+        muted={muted}
+        autoPlay
+        playsInline
+      />
       {displayStatus === 'loading' && (
         <div className={styles.overlay}>
           <Spinner size={32} />
