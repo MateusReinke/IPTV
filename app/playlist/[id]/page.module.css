@@ -40,6 +40,10 @@
   min-width: 0;
 }
 
+.continueShelf {
+  margin-bottom: 28px;
+}
+
 .categorySection {
   margin-bottom: 22px;
 }

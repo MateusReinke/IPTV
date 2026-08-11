@@ -99,6 +99,18 @@
   padding: 3px 10px;
 }
 
+.resume {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.resumeHint {
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
 .plot {
   font-size: 14px;
   color: var(--text-dim);

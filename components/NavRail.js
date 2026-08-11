@@ -43,8 +43,39 @@ export default function NavRail({ tabs, active, onChange, onHome }) {
           <HeartIcon filled={active === 'favorites'} size={19} />
           <span className={styles.label}>Favoritos</span>
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={active === 'history'}
+          className={`${styles.item} ${active === 'history' ? styles.itemActive : ''}`}
+          onClick={() => onChange('history')}
+        >
+          <HistoryIcon />
+          <span className={styles.label}>Historico</span>
+        </button>
       </div>
     </nav>
+  );
+}
+
+function HistoryIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1M3.2 4.6v4.2h4.2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 7.5V12l3 1.8"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

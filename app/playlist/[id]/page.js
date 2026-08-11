@@ -7,12 +7,24 @@ import { usePlaylist } from '@/lib/playlists';
 import { accountIsActive, xtreamRequest } from '@/lib/xtream';
 import { normalize } from '@/lib/text';
 import { toFavoriteEntry, toggleFavorite, useFavoriteKeys, useFavorites } from '@/lib/favorites';
+import {
+  clearHistory,
+  formatWatchedAt,
+  historySubtitle,
+  progressRatio,
+  removeHistoryEntry,
+  useContinueWatching,
+  useHistory,
+  useHistoryMap,
+} from '@/lib/history';
 import NavRail from '@/components/NavRail';
 import SearchBox from '@/components/SearchBox';
 import CategoryList from '@/components/CategoryList';
 import MediaGrid from '@/components/MediaGrid';
 import MediaCard from '@/components/MediaCard';
+import Shelf from '@/components/Shelf';
 import StatusPill from '@/components/StatusPill';
+import Button from '@/components/Button';
 import Hero from '@/components/Hero';
 import { SkeletonGrid, SkeletonChips } from '@/components/Skeleton';
 import { ErrorState, EmptyState } from '@/components/StateMessage';
@@ -54,6 +66,9 @@ export default function BrowsePage() {
   const [search, setSearch] = useState('');
   const isSearching = search.trim().length > 0;
   const isFavoritesTab = activeTab === 'favorites';
+  const isHistoryTab = activeTab === 'history';
+  // Tabs served from local storage rather than from the Xtream API.
+  const isLocalTab = isFavoritesTab || isHistoryTab;
 
   const tabConfig = TABS.find((t) => t.value === activeTab);
 
@@ -66,7 +81,7 @@ export default function BrowsePage() {
     isLoading: categoriesLoading,
     error: categoriesError,
     mutate: reloadCategories,
-  } = useSWR(playlist && !isFavoritesTab ? ['xtream-categories', playlist.id, activeTab] : null, () =>
+  } = useSWR(playlist && !isLocalTab ? ['xtream-categories', playlist.id, activeTab] : null, () =>
     xtreamRequest(playlist, tabConfig.catAction).then((res) => (Array.isArray(res) ? res : []))
   );
 
@@ -79,7 +94,7 @@ export default function BrowsePage() {
     error: categoryItemsError,
     mutate: reloadCategoryItems,
   } = useSWR(
-    !isFavoritesTab && !isSearching && playlist && currentCategoryId
+    !isLocalTab && !isSearching && playlist && currentCategoryId
       ? ['xtream-items', playlist.id, activeTab, currentCategoryId]
       : null,
     () =>
@@ -96,16 +111,25 @@ export default function BrowsePage() {
     error: allItemsError,
     mutate: reloadAllItems,
   } = useSWR(
-    !isFavoritesTab && isSearching && playlist ? ['xtream-items-all', playlist.id, activeTab] : null,
+    !isLocalTab && isSearching && playlist ? ['xtream-items-all', playlist.id, activeTab] : null,
     () => xtreamRequest(playlist, tabConfig.streamAction).then((res) => (Array.isArray(res) ? res : []))
   );
 
   const favorites = useFavorites(playlist?.id);
   const favoriteKeys = useFavoriteKeys(playlist?.id);
+  const history = useHistory(playlist?.id);
+  const historyMap = useHistoryMap(playlist?.id);
+  const continueWatching = useContinueWatching(playlist?.id);
 
-  const items = isFavoritesTab ? favorites : isSearching ? allItems : categoryItems;
-  const itemsLoading = isFavoritesTab ? false : isSearching ? allItemsLoading : categoryItemsLoading;
-  const itemsError = isFavoritesTab ? null : isSearching ? allItemsError : categoryItemsError;
+  const items = isFavoritesTab
+    ? favorites
+    : isHistoryTab
+      ? history
+      : isSearching
+        ? allItems
+        : categoryItems;
+  const itemsLoading = isLocalTab ? false : isSearching ? allItemsLoading : categoryItemsLoading;
+  const itemsError = isLocalTab ? null : isSearching ? allItemsError : categoryItemsError;
   const reloadItems = isSearching ? reloadAllItems : reloadCategoryItems;
 
   const categoryNameById = useMemo(() => {
@@ -122,9 +146,11 @@ export default function BrowsePage() {
   }, [items, search, isSearching]);
 
   const featuredItem =
-    !isFavoritesTab && !isSearching && activeTab !== 'live' && categoryItems && categoryItems.length > 0
+    !isLocalTab && !isSearching && activeTab !== 'live' && categoryItems && categoryItems.length > 0
       ? categoryItems[0]
       : null;
+
+  const showContinueShelf = !isLocalTab && !isSearching && continueWatching.length > 0;
 
   function selectTab(tab) {
     setActiveTab(tab);
@@ -136,35 +162,93 @@ export default function BrowsePage() {
     setSearch('');
   }
 
+  function goToPlayer(params) {
+    const query = new URLSearchParams(params);
+    router.push(`/playlist/${id}/player?${query.toString()}`);
+  }
+
   function openItem(item) {
-    const title = encodeURIComponent(item.name || '');
     if (activeTab === 'live') {
-      router.push(`/playlist/${id}/player?type=live&streamId=${item.stream_id}&title=${title}`);
+      goToPlayer({
+        type: 'live',
+        streamId: String(item.stream_id),
+        title: item.name || '',
+        poster: item.stream_icon || '',
+      });
     } else if (activeTab === 'movie') {
-      const ext = encodeURIComponent(item.container_extension || 'mp4');
-      router.push(
-        `/playlist/${id}/player?type=movie&streamId=${item.stream_id}&ext=${ext}&title=${title}`
-      );
+      goToPlayer({
+        type: 'movie',
+        streamId: String(item.stream_id),
+        ext: item.container_extension || 'mp4',
+        title: item.name || '',
+        poster: item.stream_icon || '',
+      });
     } else {
-      router.push(`/playlist/${id}/series/${item.series_id}?title=${title}`);
+      router.push(
+        `/playlist/${id}/series/${item.series_id}?title=${encodeURIComponent(item.name || '')}`
+      );
     }
   }
 
   function openFavorite(fav) {
-    const title = encodeURIComponent(fav.name || '');
     if (fav.kind === 'live') {
-      router.push(`/playlist/${id}/player?type=live&streamId=${fav.id}&title=${title}`);
+      goToPlayer({
+        type: 'live',
+        streamId: String(fav.id),
+        title: fav.name || '',
+        poster: fav.image || '',
+      });
     } else if (fav.kind === 'movie') {
-      const ext = encodeURIComponent(fav.ext || 'mp4');
-      router.push(`/playlist/${id}/player?type=movie&streamId=${fav.id}&ext=${ext}&title=${title}`);
+      goToPlayer({
+        type: 'movie',
+        streamId: String(fav.id),
+        ext: fav.ext || 'mp4',
+        title: fav.name || '',
+        poster: fav.image || '',
+      });
     } else {
-      router.push(`/playlist/${id}/series/${fav.id}?title=${title}`);
+      router.push(
+        `/playlist/${id}/series/${fav.id}?title=${encodeURIComponent(fav.name || '')}`
+      );
     }
+  }
+
+  // History points at the exact stream that was watched, so a series entry
+  // resumes its episode instead of bouncing through the series page.
+  function openHistoryEntry(entry) {
+    if (entry.kind === 'series') {
+      goToPlayer({
+        type: 'series',
+        streamId: String(entry.id),
+        ext: entry.ext || 'mp4',
+        title: entry.episodeTitle
+          ? `${entry.name} · T${entry.season} E${entry.episode} · ${entry.episodeTitle}`
+          : entry.name || '',
+        seriesId: String(entry.seriesId ?? ''),
+        poster: entry.image || '',
+      });
+      return;
+    }
+    goToPlayer({
+      type: entry.kind,
+      streamId: String(entry.id),
+      ext: entry.ext || (entry.kind === 'live' ? 'm3u8' : 'mp4'),
+      title: entry.name || '',
+      poster: entry.image || '',
+    });
   }
 
   function handleToggleFavorite(item) {
     if (!playlist) return;
     toggleFavorite(playlist.id, toFavoriteEntry(item, activeTab));
+  }
+
+  function handleClearHistory() {
+    if (!playlist) return;
+    if (typeof window !== 'undefined' && !window.confirm('Apagar todo o historico desta playlist?')) {
+      return;
+    }
+    clearHistory(playlist.id);
   }
 
   if (playlist === null) {
@@ -181,7 +265,7 @@ export default function BrowsePage() {
 
       <main className={styles.main}>
         <header className={styles.topHeader}>
-          <p className={styles.playlistTitle}>{playlist.title}</p>
+          <p className={styles.playlistTitle}>{playlist?.title}</p>
           {account && (
             <StatusPill tone={accountIsActive(account) ? 'active' : 'danger'}>
               {accountIsActive(account) ? 'Ativa' : 'Expirada'}
@@ -191,6 +275,24 @@ export default function BrowsePage() {
         </header>
 
         <div className={styles.content}>
+          {showContinueShelf && (
+            <Shelf title="Continuar assistindo" itemWidth={190} className={styles.continueShelf}>
+              {continueWatching.map((entry) => (
+                <MediaCard
+                  key={`${entry.kind}:${entry.id}`}
+                  title={entry.name}
+                  subtitle={historySubtitle(entry)}
+                  image={entry.image}
+                  aspect="portrait"
+                  progress={progressRatio(entry)}
+                  onClick={() => openHistoryEntry(entry)}
+                  onRemove={() => removeHistoryEntry(playlist.id, entry.kind, entry.id)}
+                  removeLabel="Remover de continuar assistindo"
+                />
+              ))}
+            </Shelf>
+          )}
+
           {featuredItem && (
             <Hero
               kind={activeTab}
@@ -203,7 +305,7 @@ export default function BrowsePage() {
             />
           )}
 
-          {!isFavoritesTab && (
+          {!isLocalTab && (
             <div className={styles.categorySection}>
               {categoriesLoading && <SkeletonChips count={7} />}
               {categoriesError && (
@@ -226,13 +328,20 @@ export default function BrowsePage() {
             <SearchBox
               value={search}
               onChange={setSearch}
-              placeholder={`Buscar em ${isFavoritesTab ? 'Favoritos' : tabConfig.label}...`}
+              placeholder={`Buscar em ${
+                isFavoritesTab ? 'Favoritos' : isHistoryTab ? 'Historico' : tabConfig.label
+              }...`}
             />
-            {isSearching && !isFavoritesTab && !itemsLoading && !itemsError && (
+            {isSearching && !isLocalTab && !itemsLoading && !itemsError && (
               <span className={styles.resultHint}>
                 {filteredItems.length}{' '}
                 {filteredItems.length === 1 ? 'resultado' : 'resultados'} em todas as categorias
               </span>
+            )}
+            {isHistoryTab && history.length > 0 && (
+              <Button variant="ghost" onClick={handleClearHistory}>
+                Limpar historico
+              </Button>
             )}
           </div>
 
@@ -249,41 +358,59 @@ export default function BrowsePage() {
               message={
                 isFavoritesTab
                   ? 'Nenhum favorito ainda. Toque no coracao em um canal, filme ou serie para adiciona-lo aqui.'
-                  : isSearching
-                    ? `Nenhum resultado para "${search.trim()}".`
-                    : 'Nenhum item encontrado.'
+                  : isHistoryTab
+                    ? 'Nada assistido ainda. O que voce reproduzir aparece aqui, com o ponto onde parou.'
+                    : isSearching
+                      ? `Nenhum resultado para "${search.trim()}".`
+                      : 'Nenhum item encontrado.'
               }
             />
           )}
           {!itemsLoading && !itemsError && filteredItems.length > 0 && (
             <MediaGrid columnWidth={activeTab === 'live' ? 170 : 150}>
-              {isFavoritesTab
-                ? filteredItems.map((fav) => (
+              {isHistoryTab
+                ? filteredItems.map((entry) => (
                     <MediaCard
-                      key={`${fav.kind}:${fav.id}`}
-                      title={fav.name}
-                      subtitle={KIND_LABEL[fav.kind]}
-                      image={fav.image}
-                      aspect={fav.kind === 'live' ? 'landscape' : 'portrait'}
-                      onClick={() => openFavorite(fav)}
-                      favorited
-                      onToggleFavorite={() => toggleFavorite(playlist.id, fav)}
+                      key={`${entry.kind}:${entry.id}`}
+                      title={entry.name}
+                      subtitle={`${historySubtitle(entry)} · ${formatWatchedAt(entry.watchedAt)}`}
+                      image={entry.image}
+                      aspect={entry.kind === 'live' ? 'landscape' : 'portrait'}
+                      progress={progressRatio(entry)}
+                      onClick={() => openHistoryEntry(entry)}
+                      onRemove={() => removeHistoryEntry(playlist.id, entry.kind, entry.id)}
+                      removeLabel="Remover do historico"
                     />
                   ))
-                : filteredItems.map((item) => (
-                    <MediaCard
-                      key={item.stream_id || item.series_id}
-                      title={item.name}
-                      subtitle={isSearching ? categoryNameById.get(item.category_id) : undefined}
-                      image={item.stream_icon || item.cover}
-                      aspect={activeTab === 'live' ? 'landscape' : 'portrait'}
-                      onClick={() => openItem(item)}
-                      favorited={favoriteKeys.has(
-                        `${activeTab}:${item.stream_id || item.series_id}`
-                      )}
-                      onToggleFavorite={() => handleToggleFavorite(item)}
-                    />
-                  ))}
+                : isFavoritesTab
+                  ? filteredItems.map((fav) => (
+                      <MediaCard
+                        key={`${fav.kind}:${fav.id}`}
+                        title={fav.name}
+                        subtitle={KIND_LABEL[fav.kind]}
+                        image={fav.image}
+                        aspect={fav.kind === 'live' ? 'landscape' : 'portrait'}
+                        progress={progressRatio(historyMap.get(`${fav.kind}:${fav.id}`))}
+                        onClick={() => openFavorite(fav)}
+                        favorited
+                        onToggleFavorite={() => toggleFavorite(playlist.id, fav)}
+                      />
+                    ))
+                  : filteredItems.map((item) => (
+                      <MediaCard
+                        key={item.stream_id || item.series_id}
+                        title={item.name}
+                        subtitle={isSearching ? categoryNameById.get(item.category_id) : undefined}
+                        image={item.stream_icon || item.cover}
+                        aspect={activeTab === 'live' ? 'landscape' : 'portrait'}
+                        progress={progressRatio(historyMap.get(`${activeTab}:${item.stream_id}`))}
+                        onClick={() => openItem(item)}
+                        favorited={favoriteKeys.has(
+                          `${activeTab}:${item.stream_id || item.series_id}`
+                        )}
+                        onToggleFavorite={() => handleToggleFavorite(item)}
+                      />
+                    ))}
             </MediaGrid>
           )}
         </div>

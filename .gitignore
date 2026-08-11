@@ -20,6 +20,9 @@
 # production
 /build
 
+# sync blobs written by /api/library when IPTV_DATA_DIR is not set
+/.data
+
 # misc
 .DS_Store
 *.pem

@@ -16,20 +16,34 @@ const UNSUPPORTED_CONTAINER_MESSAGE = (ext) =>
 const BLACK_FRAME_MESSAGE =
   'O audio esta tocando mas a imagem nao aparece. Isso normalmente acontece quando o video usa um codec que o seu navegador nao suporta (ex: HEVC/H.265). Tente outro navegador (o Safari costuma suportar mais formatos) ou abra o link abaixo em um player como o VLC.';
 
-export default function VideoPlayer({ src, isHls, ext, onEnded }) {
+// How often playback position is reported upwards. Anything much tighter
+// would write to localStorage (and re-render subscribers) for no real gain.
+const PROGRESS_INTERVAL_MS = 5000;
+
+export default function VideoPlayer({ src, isHls, ext, onEnded, onProgress, startPosition = 0 }) {
   const videoRef = useRef(null);
   const [status, setStatus] = useState('loading');
   const [errorMessage, setErrorMessage] = useState('');
   const [offerExternalLink, setOfferExternalLink] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
 
-  // Kept in a ref so the setup effect below doesn't need to depend on it -
-  // depending on it directly would tear down and reattach hls.js (restarting
+  // Kept in refs so the setup effect below doesn't need to depend on them -
+  // depending on them directly would tear down and reattach hls.js (restarting
   // playback) on every parent re-render that passes a new closure.
   const onEndedRef = useRef(onEnded);
   useEffect(() => {
     onEndedRef.current = onEnded;
   }, [onEnded]);
+
+  const onProgressRef = useRef(onProgress);
+  useEffect(() => {
+    onProgressRef.current = onProgress;
+  }, [onProgress]);
+
+  const startPositionRef = useRef(startPosition);
+  useEffect(() => {
+    startPositionRef.current = startPosition;
+  }, [startPosition]);
 
   const containerExt = (ext || '').toLowerCase().replace(/^\./, '');
   const unsupportedContainer = !isHls && UNSUPPORTED_CONTAINERS.has(containerExt);
@@ -41,10 +55,53 @@ export default function VideoPlayer({ src, isHls, ext, onEnded }) {
     let cancelled = false;
     let hls;
     let blackFrameTimer;
+    let lastReportAt = 0;
 
     setStatus('loading');
     setErrorMessage('');
     setOfferExternalLink(false);
+
+    // Live streams report Infinity (or 0) - there is nothing to resume into.
+    function seekableDuration() {
+      const duration = video.duration;
+      return Number.isFinite(duration) && duration > 0 ? duration : 0;
+    }
+
+    function report(completed) {
+      if (!onProgressRef.current) return;
+      lastReportAt = Date.now();
+      onProgressRef.current(video.currentTime || 0, seekableDuration(), { completed: !!completed });
+    }
+
+    function handleLoadedMetadata() {
+      const resumeAt = Number(startPositionRef.current) || 0;
+      const duration = seekableDuration();
+      // Never resume into the last few seconds - that just replays the credits.
+      if (resumeAt > 0 && duration && resumeAt < duration - 10) {
+        try {
+          video.currentTime = resumeAt;
+        } catch {
+          // Some servers reject range requests; playing from the start is
+          // better than failing outright.
+        }
+      }
+    }
+
+    function handleTimeUpdate() {
+      if (cancelled || video.paused) return;
+      if (Date.now() - lastReportAt < PROGRESS_INTERVAL_MS) return;
+      report(false);
+    }
+
+    function handlePause() {
+      if (!cancelled && !video.ended) report(false);
+    }
+
+    // Closing the tab or navigating away with the browser's own controls never
+    // runs React cleanup, so the last few seconds would be lost without this.
+    function handlePageHide() {
+      if (!cancelled && !video.ended && video.currentTime > 0) report(false);
+    }
 
     function handleCanPlay() {
       if (!cancelled) setStatus('ready');
@@ -57,6 +114,7 @@ export default function VideoPlayer({ src, isHls, ext, onEnded }) {
     }
 
     function handleEnded() {
+      report(true);
       onEndedRef.current?.();
     }
 
@@ -82,6 +140,10 @@ export default function VideoPlayer({ src, isHls, ext, onEnded }) {
     video.addEventListener('error', handleVideoError);
     video.addEventListener('ended', handleEnded);
     video.addEventListener('playing', handlePlaying);
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('pause', handlePause);
+    window.addEventListener('pagehide', handlePageHide);
 
     async function setup() {
       if (isHls) {
@@ -119,12 +181,19 @@ export default function VideoPlayer({ src, isHls, ext, onEnded }) {
     setup();
 
     return () => {
+      // Leaving the page mid-episode is the common case, so flush the exact
+      // position before tearing the element down.
+      if (!video.ended && video.currentTime > 0) report(false);
       cancelled = true;
       clearTimeout(blackFrameTimer);
       video.removeEventListener('canplay', handleCanPlay);
       video.removeEventListener('error', handleVideoError);
       video.removeEventListener('ended', handleEnded);
       video.removeEventListener('playing', handlePlaying);
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('pause', handlePause);
+      window.removeEventListener('pagehide', handlePageHide);
       if (hls) hls.destroy();
       video.removeAttribute('src');
       video.load();

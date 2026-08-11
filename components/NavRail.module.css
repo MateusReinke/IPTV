@@ -11,6 +11,8 @@
   height: 100dvh;
   position: sticky;
   top: 0;
+  /* Five entries plus the home button can outgrow a short viewport. */
+  overflow-y: auto;
 }
 
 .home {

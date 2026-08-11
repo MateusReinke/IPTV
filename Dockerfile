@@ -30,6 +30,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Where the optional sync account stores its (client-encrypted) blobs. Mount a
+# persistent volume here to keep favorites/history across redeploys; without
+# one the app still works, it just falls back to file backups.
+ENV IPTV_DATA_DIR=/app/data
+RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
+
 USER nextjs
 
 EXPOSE 3000

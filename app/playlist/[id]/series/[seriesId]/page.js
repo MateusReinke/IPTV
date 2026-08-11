@@ -4,7 +4,9 @@ import { Suspense, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { usePlaylist } from '@/lib/playlists';
+import { formatClock, isCompleted, progressRatio, useSeriesProgress } from '@/lib/history';
 import { xtreamRequest } from '@/lib/xtream';
+import Button from '@/components/Button';
 import EpisodeRow from '@/components/EpisodeRow';
 import { LoadingState, ErrorState, EmptyState } from '@/components/StateMessage';
 import styles from './page.module.css';
@@ -32,6 +34,7 @@ function SeriesDetailContent() {
   const playlist = usePlaylist(id);
   const [season, setSeason] = useState(null);
   const [posterBroken, setPosterBroken] = useState(false);
+  const seriesProgress = useSeriesProgress(id, seriesId);
 
   const {
     data,
@@ -78,6 +81,9 @@ function SeriesDetailContent() {
   const rating = info.rating && Number(info.rating) > 0 ? Number(info.rating).toFixed(1) : null;
   const releaseDate = info.releaseDate || info.release_date;
 
+  const lastWatched = seriesProgress?.last;
+  const watchedEpisodes = seriesProgress?.watched;
+
   function openEpisode(ep, seasonNumber) {
     const label = `${name} · T${seasonNumber} E${ep.episode_num} · ${ep.title || ''}`;
     const params = new URLSearchParams({
@@ -87,7 +93,23 @@ function SeriesDetailContent() {
       title: label,
       seriesId: String(seriesId),
     });
+    if (poster) params.set('poster', poster);
     router.push(`/playlist/${id}/player?${params.toString()}`);
+  }
+
+  // The "continue" button needs the raw episode (for its container extension),
+  // which only the freshly loaded series payload has.
+  function findEpisode(episodeId) {
+    for (const [seasonNumber, list] of Object.entries(data?.episodes || {})) {
+      const found = (list || []).find((ep) => String(ep.id) === String(episodeId));
+      if (found) return { episode: found, seasonNumber };
+    }
+    return null;
+  }
+
+  function resumeLastWatched() {
+    const match = findEpisode(lastWatched.id);
+    if (match) openEpisode(match.episode, match.seasonNumber);
   }
 
   return (
@@ -115,6 +137,21 @@ function SeriesDetailContent() {
             {releaseDate && <span className={styles.tag}>{releaseDate}</span>}
             {genre && <span className={styles.tag}>{genre}</span>}
           </div>
+          {lastWatched && (
+            <div className={styles.resume}>
+              <Button variant="primary" onClick={resumeLastWatched}>
+                <PlayIcon />
+                {isCompleted(lastWatched)
+                  ? `Rever T${lastWatched.season} E${lastWatched.episode}`
+                  : `Continuar T${lastWatched.season} E${lastWatched.episode}`}
+              </Button>
+              {!isCompleted(lastWatched) && lastWatched.position > 0 && (
+                <span className={styles.resumeHint}>
+                  parou em {formatClock(lastWatched.position)}
+                </span>
+              )}
+            </div>
+          )}
           {info.plot && <p className={styles.plot}>{info.plot}</p>}
           {(info.cast || info.director) && (
             <p className={styles.crew}>
@@ -145,19 +182,35 @@ function SeriesDetailContent() {
           <EmptyState message="Nenhum episodio encontrado nesta temporada." />
         ) : (
           <div className={styles.episodes}>
-            {episodes.map((ep) => (
-              <EpisodeRow
-                key={ep.id}
-                number={ep.episode_num}
-                title={ep.title || `Episodio ${ep.episode_num}`}
-                plot={ep.info?.plot}
-                onClick={() => openEpisode(ep, currentSeason)}
-              />
-            ))}
+            {episodes.map((ep) => {
+              const watched = watchedEpisodes?.get(String(ep.id));
+              return (
+                <EpisodeRow
+                  key={ep.id}
+                  number={ep.episode_num}
+                  title={ep.title || `Episodio ${ep.episode_num}`}
+                  plot={ep.info?.plot}
+                  onClick={() => openEpisode(ep, currentSeason)}
+                  watched={isCompleted(watched)}
+                  progress={progressRatio(watched)}
+                  progressLabel={
+                    watched?.position ? `${formatClock(watched.position)} assistidos` : undefined
+                  }
+                />
+              );
+            })}
           </div>
         )}
       </div>
     </main>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M8 5v14l11-7z" />
+    </svg>
   );
 }
 

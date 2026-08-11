@@ -4,12 +4,22 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { usePlaylist } from '@/lib/playlists';
+import { useHydrated } from '@/lib/library';
+import {
+  formatClock,
+  markCompleted,
+  readHistoryEntry,
+  recordPlayback,
+  resumePosition,
+  saveProgress,
+} from '@/lib/history';
 import { playableUrl, xtreamRequest } from '@/lib/xtream';
 import VideoPlayer from '@/components/VideoPlayer';
 import { ErrorState, LoadingState } from '@/components/StateMessage';
 import styles from './page.module.css';
 
 const IDLE_HIDE_DELAY = 3500;
+const RESUME_NOTICE_MS = 5000;
 
 export default function PlayerPage() {
   return (
@@ -33,14 +43,18 @@ function PlayerContent() {
   const router = useRouter();
 
   const playlist = usePlaylist(id);
+  const hydrated = useHydrated();
 
   const type = searchParams.get('type');
   const streamId = searchParams.get('streamId');
   const ext = searchParams.get('ext') || (type === 'live' ? 'm3u8' : 'mp4');
   const title = searchParams.get('title') || 'Reproduzindo';
   const seriesId = searchParams.get('seriesId');
+  const poster = searchParams.get('poster') || '';
+  const kind = type === 'movie' ? 'movie' : type === 'series' ? 'series' : 'live';
 
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [noticeDoneFor, setNoticeDoneFor] = useState(null);
   const idleTimerRef = useRef(null);
 
   const armIdleTimer = useCallback(() => {
@@ -73,12 +87,22 @@ function PlayerContent() {
   }, [seriesData]);
 
   const currentIndex = flatEpisodes.findIndex((ep) => String(ep.id) === String(streamId));
+  const currentEpisode = currentIndex >= 0 ? flatEpisodes[currentIndex] : null;
   const prevEpisode = currentIndex > 0 ? flatEpisodes[currentIndex - 1] : null;
   const nextEpisode =
     currentIndex >= 0 && currentIndex < flatEpisodes.length - 1
       ? flatEpisodes[currentIndex + 1]
       : null;
   const seriesName = seriesData?.info?.name || '';
+  const seriesPoster = seriesData?.info?.cover || poster;
+
+  // The resume point is read once per stream, on purpose: subscribing to the
+  // live history entry would feed the position written every few seconds back
+  // into the player. Recomputing only when the stream changes freezes it.
+  const resumeAt = useMemo(
+    () => (hydrated ? resumePosition(readHistoryEntry(id, kind, streamId)) : 0),
+    [hydrated, id, kind, streamId]
+  );
 
   const goToEpisode = useCallback(
     (ep) => {
@@ -92,14 +116,69 @@ function PlayerContent() {
         title: label,
         seriesId: String(seriesId),
       });
+      if (seriesPoster) params.set('poster', seriesPoster);
       router.replace(`/playlist/${id}/player?${params.toString()}`);
     },
-    [id, router, seriesId, seriesName, showControls]
+    [id, router, seriesId, seriesName, seriesPoster, showControls]
   );
 
   const handleEnded = useCallback(() => {
     if (nextEpisode) goToEpisode(nextEpisode);
   }, [goToEpisode, nextEpisode]);
+
+  // Only whether a playlist exists matters here; depending on the object would
+  // re-arm these on every library write.
+  const playlistReady = !!playlist;
+
+  const handleProgress = useCallback(
+    (position, duration, { completed } = {}) => {
+      if (!playlistReady) return;
+      saveProgress(id, kind, streamId, position, duration);
+      if (completed) markCompleted(id, kind, streamId);
+    },
+    [id, kind, playlistReady, streamId]
+  );
+
+  // Records the item as watched. Runs again once the series metadata lands so
+  // the entry gets the real series name / season / episode instead of the
+  // label carried in the URL.
+  useEffect(() => {
+    if (!hydrated || !playlistReady || !streamId) return;
+    recordPlayback(id, {
+      kind,
+      id: streamId,
+      name: kind === 'series' ? seriesName || title : title,
+      image: kind === 'series' ? seriesPoster : poster,
+      ext,
+      seriesId: kind === 'series' ? seriesId : undefined,
+      season: currentEpisode?.season,
+      episode: currentEpisode?.episode_num,
+      episodeTitle: currentEpisode?.title,
+    });
+  }, [
+    hydrated,
+    playlistReady,
+    id,
+    kind,
+    streamId,
+    ext,
+    title,
+    poster,
+    seriesId,
+    seriesName,
+    seriesPoster,
+    currentEpisode,
+  ]);
+
+  // Shown for a few seconds whenever playback picks up where it stopped.
+  useEffect(() => {
+    if (!resumeAt) return undefined;
+    const timer = setTimeout(() => setNoticeDoneFor(streamId), RESUME_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [resumeAt, streamId]);
+
+  const resumeNotice =
+    resumeAt && noticeDoneFor !== streamId ? `Retomando de ${formatClock(resumeAt)}` : '';
 
   useEffect(() => {
     armIdleTimer();
@@ -107,6 +186,18 @@ function PlayerContent() {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     };
   }, [streamId, armIdleTimer]);
+
+  // Waiting for the stored library avoids both a "playlist not found" flash
+  // and mounting the player before the resume point is known.
+  if (!hydrated) {
+    return (
+      <main className={styles.page}>
+        <div className={styles.stateWrap}>
+          <LoadingState label="Carregando..." />
+        </div>
+      </main>
+    );
+  }
 
   if (playlist === null) {
     return (
@@ -131,7 +222,6 @@ function PlayerContent() {
     );
   }
 
-  const kind = type === 'movie' ? 'movie' : type === 'series' ? 'series' : 'live';
   const src = playableUrl(playlist, kind, streamId, ext);
 
   return (
@@ -142,7 +232,15 @@ function PlayerContent() {
         onTouchStart={showControls}
         onClick={showControls}
       >
-        <VideoPlayer key={src} src={src} isHls={ext === 'm3u8'} ext={ext} onEnded={handleEnded} />
+        <VideoPlayer
+          key={src}
+          src={src}
+          isHls={ext === 'm3u8'}
+          ext={ext}
+          onEnded={handleEnded}
+          onProgress={handleProgress}
+          startPosition={resumeAt}
+        />
 
         <div className={`${styles.overlayTop} ${controlsVisible ? '' : styles.hidden}`}>
           <button
@@ -157,6 +255,8 @@ function PlayerContent() {
             <p className={styles.title}>{title}</p>
           </div>
         </div>
+
+        {resumeNotice && <p className={styles.resumeNotice}>{resumeNotice}</p>}
 
         {prevEpisode && (
           <button

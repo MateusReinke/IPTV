@@ -6,6 +6,7 @@ import { addPlaylist, makePlaylistId, removePlaylist, useLocalPlaylists } from '
 import { xtreamRequest } from '@/lib/xtream';
 import PlaylistCard from '@/components/PlaylistCard';
 import PlaylistForm from '@/components/PlaylistForm';
+import SyncPanel from '@/components/SyncPanel';
 import Button from '@/components/Button';
 import styles from './page.module.css';
 
@@ -82,6 +83,8 @@ export default function PlaylistsPage() {
             />
           </div>
         )}
+
+        <SyncPanel />
       </div>
     </main>
   );
