@@ -55,10 +55,17 @@ hipóteses, expiram sozinhos.
 
 ## Rodando localmente
 
-Requer Node.js 20+ e um Postgres.
+Com Docker, em dois comandos (sobe o Postgres junto):
 
 ```bash
-cp .env.example .env.local     # preencha DATABASE_URL e as chaves
+./scripts/setup-env.sh
+docker compose up -d
+```
+
+Sem Docker, com um Postgres seu (requer Node.js 20+):
+
+```bash
+cp .env.example .env.local     # a única obrigatória é DATABASE_URL
 npm install
 npm run dev
 ```
@@ -67,15 +74,18 @@ As migrações (`db/migrations/*.sql`) rodam sozinhas na primeira requisição,
 protegidas por um advisory lock — subir várias instâncias ao mesmo tempo é
 seguro.
 
-Gere as chaves obrigatórias com:
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"  # APP_ENCRYPTION_KEY
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"     # STREAM_TOKEN_SECRET
-```
-
 Coloque seu e-mail em `ADMIN_EMAILS` para que a conta vire admin ao se
 cadastrar e o painel `/admin` apareça.
+
+### Variáveis
+
+| Variável | Obrigatória? | Para quê |
+| --- | --- | --- |
+| `DATABASE_URL` | **sim** | Contas, assinaturas e biblioteca |
+| `APP_ENCRYPTION_KEY` | recomendada | Criptografa favoritos/histórico no banco. Sem ela a sincronização fica desligada. Aceita 32 bytes em base64 ou qualquer texto aleatório com 16+ caracteres |
+| `ADMIN_EMAILS` | recomendada | Quem vira admin ao se cadastrar |
+| `STREAM_TOKEN_SECRET` | não | O app gera e guarda a chave sozinho quando ausente |
+| `STRIPE_*` | não | Pagamento online; sem elas, liberação manual pelo painel |
 
 ## Não consigo criar conta / algo não funciona
 
@@ -105,6 +115,9 @@ Causas mais comuns, na ordem:
 | `o banco informado ... nao existe` | Crie o banco ou corrija o nome na URL |
 | `recusou a autenticacao (pg_hba)` | Provavelmente falta `DATABASE_SSL=true` |
 | `sem permissao para criar as tabelas` | Dê `CREATE` no schema `public` ao usuário |
+
+Se estiver usando o `docker-compose.yml`, nada disso deveria acontecer: o banco
+sobe junto e a `DATABASE_URL` já vem preenchida.
 
 > Em Postgres gerenciado o usuário quase nunca pode instalar extensões. As
 > migrações não dependem disso: `pgcrypto` é tentado e ignorado se não houver
@@ -152,19 +165,40 @@ Quem tem plano pago sincroniza esse documento com a conta
 (`/api/library`), criptografado em repouso com `APP_ENCRYPTION_KEY`. Quem não
 tem continua com tudo no navegador e pode exportar/importar um arquivo JSON.
 
-## Deploy (Coolify, Docker ou qualquer host Node)
+## Deploy
 
-O `Dockerfile` é multi-stage e usa o output `standalone` do Next.js.
+### Coolify, com o banco junto (recomendado)
 
-1. **+ New → Application**, selecione o repositório; o build pack `Dockerfile` é
-   detectado sozinho.
-2. Crie um **Postgres** no Coolify e ligue os dois, ou aponte `DATABASE_URL`
-   para um banco gerenciado (`DATABASE_SSL=true` costuma ser necessário).
-3. Configure as variáveis de `.env.example`. As `NEXT_PUBLIC_*` precisam
-   existir **no build** (aba *Build → Build Arguments*), porque são embutidas
-   no bundle.
-4. **Port** `3000`; defina o domínio e deixe o Coolify emitir o HTTPS.
-5. Nenhum volume é necessário: tudo persistente está no Postgres.
+O `docker-compose.yml` sobe o app **e** o Postgres. Não é preciso criar banco
+à parte nem inventar senha:
+
+1. **+ New → Application**, selecione o repositório.
+2. **Build Pack**: escolha **Docker Compose** (o arquivo é detectado).
+3. **Deploy**. As variáveis `SERVICE_PASSWORD_POSTGRES` e
+   `SERVICE_BASE64_64_ENCRYPTION` do compose são *magic variables* do Coolify:
+   ele gera os valores na primeira implantação e os guarda.
+4. Defina o domínio em **Domains**; o `SERVICE_FQDN_APP_3000` já roteia para a
+   porta 3000 e o Coolify emite o HTTPS.
+5. Para virar admin, preencha `ADMIN_EMAILS` com o seu e-mail antes de se
+   cadastrar (ou depois, e recadastre).
+
+As `NEXT_PUBLIC_*` (nome do produto, preços exibidos) são embutidas no bundle,
+então mudá-las exige um novo build.
+
+### Docker em uma VPS ou na sua máquina
+
+```bash
+./scripts/setup-env.sh     # gera .env com senha e chave aleatórias
+docker compose up -d       # sobe app + Postgres
+```
+
+Abra `http://localhost:3000`. O volume `postgres-data` guarda os dados.
+
+### App sozinho, com um Postgres que você já tem
+
+Use o `Dockerfile` (multi-stage, output `standalone` do Next.js) e configure as
+variáveis de `.env.example`. A única obrigatória é `DATABASE_URL` — as
+migrações rodam sozinhas na primeira requisição.
 
 ## Aplicativos para Android e iOS
 
@@ -211,12 +245,15 @@ lib/
   multiview.js                estado da grade
   server/
     db.js                     pool + migrações automáticas
+    settings.js               chaves que o app gera para si na primeira vez
     auth.js                   senhas (scrypt) e sessões
     leases.js playToken.js    limite de telas e tokens de reprodução
     libraryStore.js           biblioteca criptografada em repouso
     billing.js                adaptador de pagamento (Stripe)
     admin.js                  métricas e ações administrativas
 db/migrations/                SQL aplicado automaticamente
+docker-compose.yml            app + Postgres em um comando
+scripts/setup-env.sh          gera o .env com segredos aleatorios
 ```
 
 ## Limitações conhecidas
