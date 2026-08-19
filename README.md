@@ -177,8 +177,9 @@ O `docker-compose.yml` sobe o app **e** o Postgres. Não é preciso criar banco
 3. **Deploy**. As variáveis `SERVICE_PASSWORD_POSTGRES` e
    `SERVICE_BASE64_64_ENCRYPTION` do compose são *magic variables* do Coolify:
    ele gera os valores na primeira implantação e os guarda.
-4. Defina o domínio em **Domains**, no serviço `app` (porta 3000); o Coolify
-   emite o HTTPS.
+4. Defina o domínio em **Domains**, no serviço `app` (porta 3000 dentro do
+   container); o Coolify emite o HTTPS. O app também responde direto em
+   `http://IP-do-servidor:3335` — útil para conferir antes do DNS apontar.
 5. Para virar admin, preencha `ADMIN_EMAILS` com o seu e-mail antes de se
    cadastrar (ou depois, e recadastre).
 
@@ -197,13 +198,13 @@ então mudá-las exige um novo build — o Coolify já as repassa como build arg
 docker compose up -d       # sobe app + Postgres
 ```
 
-Abra `http://localhost:3000` (ou `APP_PORT=8080 docker compose up -d` para
-outra porta). O volume `postgres-data` guarda os dados.
+Abra `http://localhost:3335`. O volume `postgres-data` guarda os dados.
 
-O `docker-compose.yml` não publica porta no host — no Coolify quem roteia é o
-Traefik, pela rede interna, e publicar 3000 conflitaria com o que já estiver
-rodando no servidor. Quem publica é o `docker-compose.override.yml`, que o
-Docker Compose carrega sozinho quando você não passa `-f` (o Coolify passa).
+A porta publicada no host é a **3335** (`APP_PORT` muda). O padrão evita a
+3000, que costuma já estar ocupada por outro app no servidor — foi o que
+derrubou o primeiro deploy com `port is already allocated`. Publicar a porta é
+independente do domínio: no Coolify o Traefik continua servindo o HTTPS pela
+rede interna.
 
 ### App sozinho, com um Postgres que você já tem
 

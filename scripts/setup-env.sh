@@ -38,8 +38,8 @@ SERVICE_BASE64_64_ENCRYPTION=$(random 48 64)
 # Preencha com o seu e-mail para virar admin ao se cadastrar.
 ADMIN_EMAILS=
 
-# Porta publicada no host.
-APP_PORT=3000
+# Porta publicada no host (a 3000 costuma ja estar ocupada).
+APP_PORT=3335
 
 # Marca e precos exibidos (embutidos no build).
 NEXT_PUBLIC_APP_NAME=Multitela
