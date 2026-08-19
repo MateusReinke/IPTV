@@ -77,6 +77,39 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"     # S
 Coloque seu e-mail em `ADMIN_EMAILS` para que a conta vire admin ao se
 cadastrar e o painel `/admin` apareça.
 
+## Não consigo criar conta / algo não funciona
+
+Abra **`/api/health`** no domínio da aplicação. Ele responde exatamente o que
+falta — sem precisar abrir os logs:
+
+```json
+{
+  "ready": false,
+  "canCreateAccounts": false,
+  "blocking": ["O servidor esta sem DATABASE_URL: configure a conexao com o Postgres."],
+  "checks": { "database": { "configured": false, "reachable": false } }
+}
+```
+
+As telas de login e cadastro também mostram um aviso quando o servidor não
+consegue criar contas, em vez de deixar o botão falhar em silêncio.
+
+Causas mais comuns, na ordem:
+
+| Sintoma em `/api/health` | O que fazer |
+| --- | --- |
+| `sem DATABASE_URL` | Configure a variável apontando para o Postgres |
+| `recusou a conexao` | Host/porta errados, ou o banco não subiu |
+| `host ... nao foi encontrado` | Use o hostname interno do Coolify, não `localhost` |
+| `usuario ou senha ... incorretos` | Credenciais do Postgres |
+| `o banco informado ... nao existe` | Crie o banco ou corrija o nome na URL |
+| `recusou a autenticacao (pg_hba)` | Provavelmente falta `DATABASE_SSL=true` |
+| `sem permissao para criar as tabelas` | Dê `CREATE` no schema `public` ao usuário |
+
+> Em Postgres gerenciado o usuário quase nunca pode instalar extensões. As
+> migrações não dependem disso: `pgcrypto` é tentado e ignorado se não houver
+> permissão (`gen_random_uuid()` é nativo no Postgres 13+).
+
 ## Cobrança
 
 `lib/server/billing.js` isola o provedor atrás de três funções

@@ -2,7 +2,18 @@
 -- Everything the paid product needs lives here; the Xtream credentials
 -- themselves stay inside the (encrypted) library payload.
 
-create extension if not exists "pgcrypto";
+-- gen_random_uuid() is built into Postgres 13+. On older servers it comes from
+-- pgcrypto, which many managed providers only let a superuser install - so try
+-- it and carry on if the role is not allowed, instead of failing every
+-- migration (and with it every signup) over an extension we may not need.
+do $$
+begin
+  create extension if not exists "pgcrypto";
+exception
+  when insufficient_privilege or feature_not_supported then
+    raise notice 'pgcrypto nao instalado (sem permissao); usando gen_random_uuid() nativo';
+end
+$$;
 
 create table users (
   id uuid primary key default gen_random_uuid(),

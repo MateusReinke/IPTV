@@ -7,6 +7,7 @@ import {
   verifyPassword,
 } from '@/lib/server/auth';
 import { clientIp, rateLimit, tooManyRequests } from '@/lib/server/rateLimit';
+import { describeDatabaseError } from '@/lib/server/db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,7 +29,17 @@ export async function POST(request) {
   });
   if (!byEmail.allowed) return tooManyRequests(byEmail.retryAfter);
 
-  const user = await findUserByEmail(email);
+  let user;
+  try {
+    user = await findUserByEmail(email);
+  } catch (err) {
+    console.error('[login]', err);
+    return Response.json(
+      { error: `Nao foi possivel entrar: ${describeDatabaseError(err)}`, code: 'SERVER_NOT_READY' },
+      { status: 503 }
+    );
+  }
+
   // Always run the comparison so a missing account and a wrong password take
   // a similar amount of time.
   const ok = await verifyPassword(
@@ -43,10 +54,17 @@ export async function POST(request) {
     return Response.json({ error: 'Esta conta esta suspensa.' }, { status: 403 });
   }
 
-  await promoteBootstrapAdmin(user);
-  const { token, maxAge } = await createSession(user.id, request.headers.get('user-agent'));
-  await setSessionCookie(token, maxAge);
-  const auth = await resolveSessionToken(token);
-
-  return Response.json({ user: auth.user, entitlements: auth.entitlements, token });
+  try {
+    await promoteBootstrapAdmin(user);
+    const { token, maxAge } = await createSession(user.id, request.headers.get('user-agent'));
+    await setSessionCookie(token, maxAge);
+    const auth = await resolveSessionToken(token);
+    return Response.json({ user: auth.user, entitlements: auth.entitlements, token });
+  } catch (err) {
+    console.error('[login session]', err);
+    return Response.json(
+      { error: `Nao foi possivel entrar: ${describeDatabaseError(err)}`, code: 'SERVER_NOT_READY' },
+      { status: 503 }
+    );
+  }
 }

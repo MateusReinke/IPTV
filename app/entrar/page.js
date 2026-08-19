@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AuthCard, { Field, FormError, authStyles as styles } from '@/components/AuthCard';
 import Button from '@/components/Button';
+import SetupWarning from '@/components/SetupWarning';
 
 export default function LoginPage() {
   return (
@@ -59,6 +60,7 @@ function LoginForm() {
         </>
       }
     >
+      <SetupWarning />
       <form className={styles.form} onSubmit={handleSubmit}>
         <Field
           id="email"
