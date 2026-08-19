@@ -177,13 +177,18 @@ O `docker-compose.yml` sobe o app **e** o Postgres. Não é preciso criar banco
 3. **Deploy**. As variáveis `SERVICE_PASSWORD_POSTGRES` e
    `SERVICE_BASE64_64_ENCRYPTION` do compose são *magic variables* do Coolify:
    ele gera os valores na primeira implantação e os guarda.
-4. Defina o domínio em **Domains**; o `SERVICE_FQDN_APP_3000` já roteia para a
-   porta 3000 e o Coolify emite o HTTPS.
+4. Defina o domínio em **Domains**, no serviço `app` (porta 3000); o Coolify
+   emite o HTTPS.
 5. Para virar admin, preencha `ADMIN_EMAILS` com o seu e-mail antes de se
    cadastrar (ou depois, e recadastre).
 
 As `NEXT_PUBLIC_*` (nome do produto, preços exibidos) são embutidas no bundle,
-então mudá-las exige um novo build.
+então mudá-las exige um novo build — o Coolify já as repassa como build args.
+
+> O bloco `environment` do compose usa a forma de mapa (`CHAVE: valor`) de
+> propósito. O Coolify reescreve esse bloco antes de chamar o `docker compose`,
+> e uma entrada de lista sem `=` vira uma chave numérica, quebrando o deploy
+> com `non-string key in services.app.environment: 0`.
 
 ### Docker em uma VPS ou na sua máquina
 
