@@ -58,7 +58,7 @@ export async function GET(request) {
 
   let claim;
   try {
-    claim = verifyPlayToken(token);
+    claim = await verifyPlayToken(token);
   } catch (err) {
     return new Response(err.message, { status: 503 });
   }

@@ -6,7 +6,7 @@ import {
   pruneExpiredLeases,
   releaseLease,
 } from '@/lib/server/leases';
-import { issuePlayToken, streamAuthConfigured } from '@/lib/server/playToken';
+import { issuePlayToken } from '@/lib/server/playToken';
 
 // Every picture on screen holds a lease. This is where the plan's screen limit
 // is enforced, and where the short-lived token that /api/stream accepts comes
@@ -26,13 +26,6 @@ export async function POST(request) {
     const tileId = params.get('tileId');
     if (tileId) await releaseLease(auth.user.id, tileId);
     return Response.json({ ok: true });
-  }
-
-  if (!streamAuthConfigured()) {
-    return Response.json(
-      { error: 'Servidor sem STREAM_TOKEN_SECRET configurado.' },
-      { status: 503 }
-    );
   }
 
   const body = await request.json().catch(() => null);
@@ -61,7 +54,7 @@ export async function POST(request) {
   // Cheap opportunistic cleanup - there is no scheduler in a single container.
   if (Math.random() < 0.05) pruneExpiredLeases().catch(() => {});
 
-  const { token, expiresAt } = issuePlayToken(auth.user.id);
+  const { token, expiresAt } = await issuePlayToken(auth.user.id);
   return Response.json({
     token,
     expiresAt,

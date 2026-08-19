@@ -18,7 +18,7 @@ function unavailable() {
   return Response.json(
     {
       error:
-        'A sincronizacao nao esta habilitada neste servidor: defina APP_ENCRYPTION_KEY (32 bytes em base64).',
+        'A sincronizacao nao esta habilitada neste servidor: defina APP_ENCRYPTION_KEY (qualquer texto aleatorio com 16+ caracteres).',
       code: 'NOT_CONFIGURED',
     },
     { status: 503 }

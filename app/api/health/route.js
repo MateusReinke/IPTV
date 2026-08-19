@@ -1,6 +1,6 @@
 import { checkDatabase } from '@/lib/server/db';
 import { libraryStorageConfigured } from '@/lib/server/libraryStore';
-import { streamAuthConfigured } from '@/lib/server/playToken';
+import { streamSecretFromEnv } from '@/lib/server/playToken';
 import { billingConfigured } from '@/lib/server/billing';
 
 // Setup diagnostics. Deploys fail on configuration far more often than on
@@ -12,17 +12,22 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const database = await checkDatabase();
+  const databaseReady = database.configured && database.reachable;
 
   const checks = {
     database,
-    // Only these two block the core flows; billing is optional by design.
+    // The only piece that must come from the environment: keeping the library
+    // key next to the ciphertext would defeat encrypting it at rest.
     encryptionKey: {
       configured: libraryStorageConfigured(),
-      note: 'APP_ENCRYPTION_KEY (32 bytes base64) - necessaria para sincronizar favoritos e historico',
+      note: 'APP_ENCRYPTION_KEY - necessaria para sincronizar favoritos e historico entre aparelhos',
     },
     streamSecret: {
-      configured: streamAuthConfigured(),
-      note: 'STREAM_TOKEN_SECRET - necessaria para reproduzir video',
+      // Generated and stored by the app when absent, so it never blocks a
+      // deploy; the env var only pins it to a value you control.
+      configured: streamSecretFromEnv() || databaseReady,
+      source: streamSecretFromEnv() ? 'env' : 'gerado automaticamente',
+      note: 'STREAM_TOKEN_SECRET - opcional; sem ela o app gera e guarda a chave sozinho',
     },
     billing: {
       configured: billingConfigured(),
@@ -30,13 +35,19 @@ export async function GET() {
     },
   };
 
-  const blocking = [];
-  if (!database.configured || !database.reachable) blocking.push(database.error || 'banco de dados');
-  if (!checks.streamSecret.configured) blocking.push('STREAM_TOKEN_SECRET ausente');
+  // Only the database truly blocks the product now.
+  const blocking = databaseReady ? [] : [database.error || 'banco de dados indisponivel'];
+  const warnings = [];
+  if (!checks.encryptionKey.configured) {
+    warnings.push('Sem APP_ENCRYPTION_KEY: favoritos e historico ficam so no navegador.');
+  }
+  if (!billingConfigured()) {
+    warnings.push('Sem Stripe: libere assinaturas manualmente pelo painel /admin.');
+  }
 
   const ready = blocking.length === 0;
   return Response.json(
-    { ready, canCreateAccounts: database.configured && database.reachable, blocking, checks },
+    { ready, canCreateAccounts: databaseReady, blocking, warnings, checks },
     { status: ready ? 200 : 503 }
   );
 }
