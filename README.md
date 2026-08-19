@@ -197,7 +197,13 @@ então mudá-las exige um novo build — o Coolify já as repassa como build arg
 docker compose up -d       # sobe app + Postgres
 ```
 
-Abra `http://localhost:3000`. O volume `postgres-data` guarda os dados.
+Abra `http://localhost:3000` (ou `APP_PORT=8080 docker compose up -d` para
+outra porta). O volume `postgres-data` guarda os dados.
+
+O `docker-compose.yml` não publica porta no host — no Coolify quem roteia é o
+Traefik, pela rede interna, e publicar 3000 conflitaria com o que já estiver
+rodando no servidor. Quem publica é o `docker-compose.override.yml`, que o
+Docker Compose carrega sozinho quando você não passa `-f` (o Coolify passa).
 
 ### App sozinho, com um Postgres que você já tem
 

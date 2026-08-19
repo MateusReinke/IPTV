@@ -59,8 +59,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - '${APP_PORT:-3000}:3000'
+    # `expose`, e não `ports`: no Coolify o Traefik alcança o container pela
+    # rede interna, e publicar 3000 no host só cria conflito com o que já
+    # estiver rodando ali ("port is already allocated").
+    # Para rodar fora do Coolify, o docker-compose.override.yml publica a porta
+    # automaticamente — o Coolify não o carrega porque passa `-f` explícito.
+    expose:
+      - '3000'
 
 volumes:
   postgres-data:
