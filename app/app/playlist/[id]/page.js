@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { Suspense, useMemo, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { usePlaylist } from '@/lib/playlists';
 import { accountIsActive, xtreamRequest } from '@/lib/xtream';
@@ -29,7 +29,7 @@ import StatusPill from '@/components/StatusPill';
 import Button from '@/components/Button';
 import Hero from '@/components/Hero';
 import { SkeletonGrid, SkeletonChips } from '@/components/Skeleton';
-import { ErrorState, EmptyState } from '@/components/StateMessage';
+import { ErrorState, EmptyState, LoadingState } from '@/components/StateMessage';
 import styles from './page.module.css';
 
 const TABS = [
@@ -57,14 +57,37 @@ const TABS = [
 ];
 
 const KIND_LABEL = { live: 'Ao vivo', movie: 'Filme', series: 'Serie' };
+const VALID_TABS = ['live', 'movie', 'series', 'favorites', 'history'];
 
 export default function BrowsePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className={styles.shell}>
+          <LoadingState label="Carregando..." />
+        </main>
+      }
+    >
+      <BrowseContent />
+    </Suspense>
+  );
+}
+
+function BrowseContent() {
   const { id } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const playlist = usePlaylist(id);
 
-  const [activeTab, setActiveTab] = useState('live');
-  const [activeCategory, setActiveCategory] = useState({});
+  // The active tab/category live in the URL (not just component state) so
+  // that navigating away (a series, the player) and back restores the exact
+  // screen the user left, instead of resetting to the default Live TV tab.
+  const initialTab = VALID_TABS.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'live';
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeCategory, setActiveCategory] = useState(() => {
+    const cat = searchParams.get('cat');
+    return cat ? { [initialTab]: cat } : {};
+  });
   const [search, setSearch] = useState('');
   const isSearching = search.trim().length > 0;
   const isFavoritesTab = activeTab === 'favorites';
@@ -159,14 +182,23 @@ export default function BrowsePage() {
     canSeeHistory && !isLocalTab && !isSearching && continueWatching.length > 0;
   const historyLocked = isHistoryTab && !canSeeHistory;
 
+  function updateUrl(tab, catId) {
+    const params = new URLSearchParams();
+    params.set('tab', tab);
+    if (catId) params.set('cat', catId);
+    router.replace(`/app/playlist/${id}?${params.toString()}`);
+  }
+
   function selectTab(tab) {
     setActiveTab(tab);
     setSearch('');
+    updateUrl(tab, activeCategory[tab]);
   }
 
   function selectCategory(catId) {
     setActiveCategory((prev) => ({ ...prev, [activeTab]: catId }));
     setSearch('');
+    updateUrl(activeTab, catId);
   }
 
   function goToPlayer(params) {

@@ -14,6 +14,7 @@ import {
   saveProgress,
 } from '@/lib/history';
 import { playableUrl, xtreamRequest } from '@/lib/xtream';
+import { goBack } from '@/lib/nav';
 import VideoPlayer from '@/components/VideoPlayer';
 import { usePlaybackSlot } from '@/components/PlaybackProvider';
 import { useFeature } from '@/components/SessionProvider';
@@ -244,7 +245,7 @@ function PlayerContent() {
             message={slotError.message}
             showUpgrade={slotError.code === 'SCREEN_LIMIT'}
             onRetry={retrySlot}
-            onBack={() => router.push(`/app/playlist/${id}`)}
+            onBack={() => goBack(router, `/app/playlist/${id}`)}
           />
         </div>
       </main>
@@ -280,13 +281,14 @@ function PlayerContent() {
           onProgress={handleProgress}
           startPosition={resumeAt}
           tokenRef={tokenRef}
+          controls={controlsVisible}
         />
 
         <div className={`${styles.overlayTop} ${controlsVisible ? '' : styles.hidden}`}>
           <button
             type="button"
             className={styles.iconBtn}
-            onClick={() => router.back()}
+            onClick={() => goBack(router, `/app/playlist/${id}`)}
             aria-label="Voltar"
           >
             <BackIcon />

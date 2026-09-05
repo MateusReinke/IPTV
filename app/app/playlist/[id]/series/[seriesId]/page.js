@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import { usePlaylist } from '@/lib/playlists';
 import { formatClock, isCompleted, progressRatio, useSeriesProgress } from '@/lib/history';
 import { xtreamRequest } from '@/lib/xtream';
+import { goBack } from '@/lib/nav';
 import Button from '@/components/Button';
 import EpisodeRow from '@/components/EpisodeRow';
 import { LoadingState, ErrorState, EmptyState } from '@/components/StateMessage';
@@ -56,7 +57,7 @@ function SeriesDetailContent() {
   if (isLoading || (!data && !error)) {
     return (
       <main className={styles.page}>
-        <TopBar title={fallbackTitle} onBack={() => router.push(`/app/playlist/${id}`)} />
+        <TopBar title={fallbackTitle} onBack={() => goBack(router, `/app/playlist/${id}`)} />
         <LoadingState label="Carregando serie..." />
       </main>
     );
@@ -65,7 +66,7 @@ function SeriesDetailContent() {
   if (error) {
     return (
       <main className={styles.page}>
-        <TopBar title={fallbackTitle} onBack={() => router.push(`/app/playlist/${id}`)} />
+        <TopBar title={fallbackTitle} onBack={() => goBack(router, `/app/playlist/${id}`)} />
         <ErrorState message={error.message} onRetry={() => reload()} />
       </main>
     );
@@ -114,7 +115,7 @@ function SeriesDetailContent() {
 
   return (
     <main className={styles.page}>
-      <TopBar title={name} onBack={() => router.push(`/app/playlist/${id}`)} />
+      <TopBar title={name} onBack={() => goBack(router, `/app/playlist/${id}`)} />
 
       <div className={styles.hero}>
         <span className={styles.poster}>
