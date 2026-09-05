@@ -39,7 +39,7 @@ services:
       context: .
       args:
         # NEXT_PUBLIC_* são embutidas no bundle, então precisam existir no build.
-        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Multitela}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Mosaico Play}
         NEXT_PUBLIC_TRIAL_DAYS: ${NEXT_PUBLIC_TRIAL_DAYS:-7}
         NEXT_PUBLIC_PRICE_MONTHLY: ${NEXT_PUBLIC_PRICE_MONTHLY:-19.90}
         NEXT_PUBLIC_PRICE_YEARLY: ${NEXT_PUBLIC_PRICE_YEARLY:-199}

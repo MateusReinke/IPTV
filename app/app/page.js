@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { addPlaylist, makePlaylistId, removePlaylist, useLocalPlaylists } from '@/lib/playlists';
 import { xtreamRequest } from '@/lib/xtream';
+import { APP_NAME } from '@/lib/pricing';
 import PlaylistCard from '@/components/PlaylistCard';
 import PlaylistForm from '@/components/PlaylistForm';
 import Button from '@/components/Button';
+import LogoMark from '@/components/LogoMark';
 import styles from './page.module.css';
 
 export default function PlaylistsPage() {
@@ -40,14 +42,9 @@ export default function PlaylistsPage() {
     <main className={styles.page}>
       <div className={styles.container}>
         <div className={styles.header}>
-          <span className={styles.logo} aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <rect x="2.5" y="5" width="19" height="13" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
-              <path d="M8 21h8M7 2 12 5l5-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
+          <LogoMark className={styles.logo} />
           <div className={styles.headerText}>
-            <h1 className={styles.title}>IPTV Player</h1>
+            <h1 className={styles.title}>{APP_NAME}</h1>
             <p className={styles.subtitle}>Conecte-se a um servidor Xtream Codes para assistir</p>
           </div>
         </div>

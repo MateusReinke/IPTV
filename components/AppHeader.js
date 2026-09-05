@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from './SessionProvider';
 import { APP_NAME } from '@/lib/pricing';
+import LogoMark from './LogoMark';
 import styles from './AppHeader.module.css';
 
 const LINKS = [
@@ -28,7 +29,7 @@ export default function AppHeader() {
   return (
     <header className={styles.header}>
       <Link href="/app" className={styles.brand}>
-        <span className={styles.mark} aria-hidden="true" />
+        <LogoMark className={styles.mark} />
         {APP_NAME}
       </Link>
 

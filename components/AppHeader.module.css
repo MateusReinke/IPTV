@@ -24,11 +24,9 @@
 }
 
 .mark {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  background: linear-gradient(150deg, var(--accent), var(--accent-strong));
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
 }
 
 .nav {
