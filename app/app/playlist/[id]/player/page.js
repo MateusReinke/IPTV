@@ -24,6 +24,9 @@ import styles from './page.module.css';
 
 const IDLE_HIDE_DELAY = 3500;
 const RESUME_NOTICE_MS = 5000;
+// Xtream doesn't hand us per-episode opening-credits markers, so this is a
+// generic window covering most TV intros rather than an exact one.
+const INTRO_SKIP_SECONDS = 90;
 
 export default function PlayerPage() {
   return (
@@ -59,7 +62,19 @@ function PlayerContent() {
 
   const [controlsVisible, setControlsVisible] = useState(true);
   const [noticeDoneFor, setNoticeDoneFor] = useState(null);
+  const [playbackTime, setPlaybackTime] = useState(0);
+  const [dismissedIntroFor, setDismissedIntroFor] = useState(null);
   const idleTimerRef = useRef(null);
+  const videoActionsRef = useRef(null);
+
+  // Fresh window for every episode - resetting derived state on a prop
+  // change during render (rather than in an effect) avoids an extra render
+  // pass. See https://react.dev/learn/you-might-not-need-an-effect
+  const [trackedStreamId, setTrackedStreamId] = useState(streamId);
+  if (streamId !== trackedStreamId) {
+    setTrackedStreamId(streamId);
+    setPlaybackTime(0);
+  }
 
   // One picture on screen = one lease. The token that comes back is what lets
   // /api/stream serve bytes, so a plan at its screen limit lands here.
@@ -138,6 +153,15 @@ function PlayerContent() {
   const handleEnded = useCallback(() => {
     if (nextEpisode) goToEpisode(nextEpisode);
   }, [goToEpisode, nextEpisode]);
+
+  const showSkipIntro =
+    kind === 'series' && dismissedIntroFor !== streamId && playbackTime < INTRO_SKIP_SECONDS;
+
+  function handleSkipIntro() {
+    videoActionsRef.current?.seek(INTRO_SKIP_SECONDS);
+    setPlaybackTime(INTRO_SKIP_SECONDS);
+    setDismissedIntroFor(streamId);
+  }
 
   // Only whether a playlist exists matters here; depending on the object would
   // re-arm these on every library write.
@@ -279,8 +303,10 @@ function PlayerContent() {
           ext={ext}
           onEnded={handleEnded}
           onProgress={handleProgress}
+          onTimeUpdate={setPlaybackTime}
           startPosition={resumeAt}
           tokenRef={tokenRef}
+          actionsRef={videoActionsRef}
           controls={controlsVisible}
         />
 
@@ -299,6 +325,19 @@ function PlayerContent() {
         </div>
 
         {resumeNotice && <p className={styles.resumeNotice}>{resumeNotice}</p>}
+
+        {showSkipIntro && (
+          <button
+            type="button"
+            className={styles.skipIntroBtn}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSkipIntro();
+            }}
+          >
+            Pular abertura
+          </button>
+        )}
 
         {prevEpisode && (
           <button

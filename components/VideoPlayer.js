@@ -27,11 +27,16 @@ export default function VideoPlayer({
   ext,
   onEnded,
   onProgress,
+  onTimeUpdate,
   startPosition = 0,
   // Ref holding the current play token. Kept as a ref (not a prop value) so a
   // token refresh mid-stream never re-runs the setup effect and restarts
   // playback - see the hls.js xhrSetup below.
   tokenRef,
+  // Ref this component fills with { seek(seconds) } once the video element
+  // exists, so a parent (the skip-intro button) can command playback without
+  // needing direct access to the <video> node.
+  actionsRef,
   muted = false,
   controls = true,
   className = '',
@@ -54,6 +59,11 @@ export default function VideoPlayer({
   useEffect(() => {
     onProgressRef.current = onProgress;
   }, [onProgress]);
+
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+  useEffect(() => {
+    onTimeUpdateRef.current = onTimeUpdate;
+  }, [onTimeUpdate]);
 
   const startPositionRef = useRef(startPosition);
   useEffect(() => {
@@ -111,7 +121,9 @@ export default function VideoPlayer({
     }
 
     function handleTimeUpdate() {
-      if (cancelled || video.paused) return;
+      if (cancelled) return;
+      onTimeUpdateRef.current?.(video.currentTime || 0);
+      if (video.paused) return;
       if (Date.now() - lastReportAt < PROGRESS_INTERVAL_MS) return;
       report(false);
     }
@@ -211,6 +223,18 @@ export default function VideoPlayer({
 
     setup();
 
+    if (actionsRef) {
+      actionsRef.current = {
+        seek(seconds) {
+          try {
+            video.currentTime = seconds;
+          } catch {
+            // Ignored - a rejected seek leaves playback where it was.
+          }
+        },
+      };
+    }
+
     return () => {
       // Leaving the page mid-episode is the common case, so flush the exact
       // position before tearing the element down.
@@ -225,11 +249,12 @@ export default function VideoPlayer({
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('pause', handlePause);
       window.removeEventListener('pagehide', handlePageHide);
+      if (actionsRef) actionsRef.current = null;
       if (hls) hls.destroy();
       video.removeAttribute('src');
       video.load();
     };
-  }, [src, isHls, ext, unsupportedContainer, retryKey, tokenRef]);
+  }, [src, isHls, ext, unsupportedContainer, retryKey, tokenRef, actionsRef]);
 
   const displayStatus = unsupportedContainer ? 'error' : status;
   const displayMessage = unsupportedContainer
