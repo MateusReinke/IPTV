@@ -7,6 +7,7 @@ import { usePlaylist } from '@/lib/playlists';
 import { accountIsActive, xtreamRequest } from '@/lib/xtream';
 import { normalize } from '@/lib/text';
 import { toFavoriteEntry, toggleFavorite, useFavoriteKeys, useFavorites } from '@/lib/favorites';
+import { pickWeightedByRating } from '@/lib/shuffle';
 import {
   clearHistory,
   formatWatchedAt,
@@ -89,6 +90,7 @@ function BrowseContent() {
     return cat ? { [initialTab]: cat } : {};
   });
   const [search, setSearch] = useState('');
+  const [shuffling, setShuffling] = useState(false);
   const isSearching = search.trim().length > 0;
   const isFavoritesTab = activeTab === 'favorites';
   const isHistoryTab = activeTab === 'history';
@@ -290,6 +292,27 @@ function BrowseContent() {
     clearHistory(playlist.id);
   }
 
+  const canShuffle = !isLocalTab && (activeTab === 'movie' || activeTab === 'series');
+
+  // Draws from the whole tab catalog (every category), not just the open
+  // folder, so "surpreenda-me" has real variety to pick from.
+  async function handleShuffle() {
+    if (!playlist || shuffling) return;
+    setShuffling(true);
+    try {
+      const list =
+        allItems && allItems.length > 0
+          ? allItems
+          : await xtreamRequest(playlist, tabConfig.streamAction).then((res) =>
+              Array.isArray(res) ? res : []
+            );
+      const pick = pickWeightedByRating(list);
+      if (pick) openItem(pick);
+    } finally {
+      setShuffling(false);
+    }
+  }
+
   if (playlist === null) {
     return (
       <main className={styles.shell}>
@@ -355,7 +378,7 @@ function BrowseContent() {
 
           {!isLocalTab && !historyLocked && (
             <div className={styles.categorySection}>
-              {categoriesLoading && <SkeletonChips count={7} />}
+              {categoriesLoading && <SkeletonChips count={12} />}
               {categoriesError && (
                 <ErrorState message={categoriesError.message} onRetry={() => reloadCategories()} />
               )}
@@ -386,6 +409,12 @@ function BrowseContent() {
                 {filteredItems.length}{' '}
                 {filteredItems.length === 1 ? 'resultado' : 'resultados'} em todas as categorias
               </span>
+            )}
+            {canShuffle && !isSearching && (
+              <Button variant="ghost" loading={shuffling} onClick={handleShuffle}>
+                {!shuffling && <ShuffleIcon />}
+                {activeTab === 'movie' ? 'Sortear um filme' : 'Sortear uma serie'}
+              </Button>
             )}
             {isHistoryTab && history.length > 0 && (
               <Button variant="ghost" onClick={handleClearHistory}>
@@ -468,6 +497,20 @@ function BrowseContent() {
         </div>
       </main>
     </div>
+  );
+}
+
+function ShuffleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M17 3h4v4M21 3l-6.5 6.5M3 7h3.5c1.8 0 2.7.7 3.8 2M21 21h-4v-4M8 8l9.5 9.5M3 17h3.5c1.8 0 2.7-.7 3.8-2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
