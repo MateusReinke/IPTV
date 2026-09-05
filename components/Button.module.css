@@ -46,6 +46,8 @@
 
 .secondary:not(:disabled):hover {
   background: var(--surface-hover);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
 }
 
 .ghost {
@@ -56,6 +58,12 @@
 .ghost:not(:disabled):hover {
   background: var(--surface);
   color: var(--text);
+  transform: translateY(-1px);
+}
+
+.secondary:not(:disabled):active,
+.ghost:not(:disabled):active {
+  transform: translateY(0);
 }
 
 .danger {
