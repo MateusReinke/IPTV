@@ -1,22 +1,15 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
 .row {
   display: flex;
   flex-wrap: wrap;
-  align-content: flex-start;
   gap: 8px;
-  max-height: 158px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 2px 4px 10px;
-  scrollbar-width: thin;
-}
-
-.row::-webkit-scrollbar {
-  width: 6px;
-}
-
-.row::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 999px;
+  padding: 2px 4px;
 }
 
 .chip {
@@ -51,4 +44,19 @@
 .chipActive:hover {
   color: var(--accent-contrast);
   transform: none;
+}
+
+.toggle {
+  flex-shrink: 0;
+  padding: 8px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s var(--ease);
+}
+
+.toggle:hover {
+  color: var(--text);
 }
