@@ -218,18 +218,20 @@ function PlayIcon() {
 function TopBar({ title, onBack }) {
   return (
     <header className={styles.topbar}>
-      <button type="button" className={styles.back} onClick={onBack} aria-label="Voltar">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M15 5l-7 7 7 7"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-      <p className={styles.headTitle}>{title}</p>
+      <div className={styles.topbarInner}>
+        <button type="button" className={styles.back} onClick={onBack} aria-label="Voltar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M15 5l-7 7 7 7"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        <p className={styles.headTitle}>{title}</p>
+      </div>
     </header>
   );
 }
