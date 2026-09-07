@@ -13,7 +13,7 @@ import {
   resumePosition,
   saveProgress,
 } from '@/lib/history';
-import { playableUrl, xtreamRequest } from '@/lib/xtream';
+import { xtreamRequest } from '@/lib/xtream';
 import VideoPlayer from '@/components/VideoPlayer';
 import { usePlaybackSlot } from '@/components/PlaybackProvider';
 import { useFeature } from '@/components/SessionProvider';
@@ -60,13 +60,28 @@ function PlayerContent() {
   const [noticeDoneFor, setNoticeDoneFor] = useState(null);
   const idleTimerRef = useRef(null);
 
-  // One picture on screen = one lease. The token that comes back is what lets
-  // /api/stream serve bytes, so a plan at its screen limit lands here.
-  const { token, tokenRef, error: slotError, retry: retrySlot } = usePlaybackSlot(
-    'player',
-    title,
-    !!streamId
-  );
+  // One picture on screen = one lease. The src that comes back is already
+  // pointed at /api/stream with the account's credentials encrypted server-
+  // side, and the token is what lets /api/stream serve bytes - so a plan at
+  // its screen limit lands here.
+  const target =
+    playlist && streamId
+      ? {
+          server: playlist.server,
+          username: playlist.username,
+          password: playlist.password,
+          kind,
+          streamId,
+          ext,
+        }
+      : null;
+  const {
+    token,
+    tokenRef,
+    src,
+    error: slotError,
+    retry: retrySlot,
+  } = usePlaybackSlot('player', title, target, !!playlist && !!streamId);
   const canSaveHistory = useFeature('history');
 
   const armIdleTimer = useCallback(() => {
@@ -251,7 +266,7 @@ function PlayerContent() {
     );
   }
 
-  if (!token) {
+  if (!token || !src) {
     return (
       <main className={styles.page}>
         <div className={styles.stateWrap}>
@@ -260,8 +275,6 @@ function PlayerContent() {
       </main>
     );
   }
-
-  const src = playableUrl(playlist, kind, streamId, ext, token);
 
   return (
     <main className={styles.page}>

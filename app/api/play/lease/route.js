@@ -1,3 +1,4 @@
+import { buildStreamUrl } from '@/lib/xtream';
 import { getRequestAuth } from '@/lib/server/auth';
 import {
   HEARTBEAT_SECONDS,
@@ -7,10 +8,31 @@ import {
   releaseLease,
 } from '@/lib/server/leases';
 import { issuePlayToken } from '@/lib/server/playToken';
+import { encryptStreamTarget } from '@/lib/server/streamCrypto';
 
 // Every picture on screen holds a lease. This is where the plan's screen limit
 // is enforced, and where the short-lived token that /api/stream accepts comes
 // from - so the limit holds across tabs and devices, not just inside one page.
+//
+// A claim can optionally carry a `target` (the playlist credentials plus what
+// to play): when it does, this is also where the upstream stream URL gets
+// built and immediately encrypted into the `src` the browser plays, so the
+// account's server/username/password are only ever in a POST body here, never
+// in a URL the browser keeps around.
+
+async function buildSrc(target, token) {
+  if (!target || !target.server || !target.username || !target.password || !target.kind || !target.streamId) {
+    return undefined;
+  }
+  const rawUrl = buildStreamUrl(
+    { server: target.server, username: target.username, password: target.password },
+    target.kind,
+    target.streamId,
+    target.ext
+  );
+  const e = await encryptStreamTarget(rawUrl);
+  return `/api/stream?e=${encodeURIComponent(e)}&t=${encodeURIComponent(token)}`;
+}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,12 +77,22 @@ export async function POST(request) {
   if (Math.random() < 0.05) pruneExpiredLeases().catch(() => {});
 
   const { token, expiresAt } = await issuePlayToken(auth.user.id);
+
+  let src;
+  try {
+    src = await buildSrc(body?.target, token);
+  } catch (err) {
+    await releaseLease(auth.user.id, tileId);
+    return Response.json({ error: err.message || 'URL do servidor invalida' }, { status: 400 });
+  }
+
   return Response.json({
     token,
     expiresAt,
     heartbeatSeconds: HEARTBEAT_SECONDS,
     screens,
     used: lease.used,
+    src,
   });
 }
 

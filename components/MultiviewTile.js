@@ -1,6 +1,5 @@
 'use client';
 
-import { playableUrl } from '@/lib/xtream';
 import VideoPlayer from './VideoPlayer';
 import { usePlaybackSlot } from './PlaybackProvider';
 import UpgradeNotice from './UpgradeNotice';
@@ -20,7 +19,17 @@ export default function MultiviewTile({
   onPick,
   onRemove,
 }) {
-  const { token, tokenRef, error, retry } = usePlaybackSlot(id, channel?.name, !!channel);
+  const target = channel
+    ? {
+        server: playlist.server,
+        username: playlist.username,
+        password: playlist.password,
+        kind: 'live',
+        streamId: channel.id,
+        ext: 'm3u8',
+      }
+    : null;
+  const { src, tokenRef, error, retry } = usePlaybackSlot(id, channel?.name, target, !!channel);
 
   if (!channel) {
     return (
@@ -78,10 +87,10 @@ export default function MultiviewTile({
         }}
         aria-label={hasAudio ? `${channel.name} com audio` : `Ouvir ${channel.name}`}
       >
-        {token ? (
+        {src ? (
           <VideoPlayer
             key={`${id}:${channel.id}`}
-            src={playableUrl(playlist, 'live', channel.id, 'm3u8', token)}
+            src={src}
             isHls
             ext="m3u8"
             tokenRef={tokenRef}

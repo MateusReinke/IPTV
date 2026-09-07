@@ -30,12 +30,17 @@ export default function PlaybackProvider({ children }) {
     setToken((current) => current || next);
   }, []);
 
+  // `target` (server/username/password + what to play) is optional: tiles
+  // that only ever show what another claim already resolved (there are none
+  // today, but the shape stays generic) can omit it. When present, the server
+  // builds and encrypts the stream URL and hands back a ready `src` - the
+  // account's credentials travel in this POST body, never in a URL.
   const request = useCallback(
-    async (tileId, label) => {
+    async (tileId, label, target) => {
       const res = await fetch('/api/play/lease', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ tileId, label }),
+        body: JSON.stringify({ tileId, label, target }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -55,7 +60,7 @@ export default function PlaybackProvider({ children }) {
   useEffect(() => {
     timerRef.current = setInterval(() => {
       for (const [tileId, entry] of tilesRef.current) {
-        request(tileId, entry.label).catch((err) => {
+        request(tileId, entry.label, entry.target).catch((err) => {
           entry.onError?.(err);
         });
       }
@@ -64,10 +69,10 @@ export default function PlaybackProvider({ children }) {
   }, [request]);
 
   const claim = useCallback(
-    async (tileId, label, onError) => {
-      tilesRef.current.set(tileId, { label, onError });
+    async (tileId, label, target, onError) => {
+      tilesRef.current.set(tileId, { label, target, onError });
       try {
-        return await request(tileId, label);
+        return await request(tileId, label, target);
       } catch (err) {
         tilesRef.current.delete(tileId);
         throw err;
@@ -117,32 +122,49 @@ export function usePlayback() {
 }
 
 // Claims a slot for one tile and keeps it for as long as the component lives.
-// Returns the shared play token plus any refusal, so callers can render an
-// upgrade prompt in place of the video.
-export function usePlaybackSlot(tileId, label, enabled = true) {
+// Returns the shared play token, the tile's own ready-to-play `src` (built
+// server-side from `target`, see /api/play/lease) plus any refusal, so
+// callers can render an upgrade prompt in place of the video.
+export function usePlaybackSlot(tileId, label, target, enabled = true) {
   const { token, tokenRef, claim, release } = usePlayback();
   const [attempt, setAttempt] = useState(0);
   // Outcome is stamped with the request it belongs to, so switching channels
   // (or retrying) invalidates the previous result by derivation instead of by
   // resetting state from inside the effect.
-  const [outcome, setOutcome] = useState({ key: null, ready: false, error: null });
-  const requestKey = `${tileId}:${attempt}:${enabled ? 1 : 0}`;
+  const [outcome, setOutcome] = useState({ key: null, ready: false, error: null, src: null });
+  // JSON-encoded so a fresh `target` object literal each render (the normal
+  // case - callers build it inline) doesn't look like a change; only its
+  // actual content does.
+  const targetKey = target ? JSON.stringify(target) : '';
+  const requestKey = `${tileId}:${attempt}:${enabled ? 1 : 0}:${targetKey}`;
 
   useEffect(() => {
     if (!enabled || !tileId) return undefined;
     let cancelled = false;
 
-    claim(tileId, label, (err) => {
+    claim(tileId, label, target, (err) => {
       if (!cancelled) {
-        setOutcome({ key: requestKey, ready: false, error: { message: err.message, code: err.code } });
+        setOutcome({
+          key: requestKey,
+          ready: false,
+          error: { message: err.message, code: err.code },
+          src: null,
+        });
       }
     })
-      .then(() => {
-        if (!cancelled) setOutcome({ key: requestKey, ready: true, error: null });
+      .then((data) => {
+        if (!cancelled) {
+          setOutcome({ key: requestKey, ready: true, error: null, src: data?.src || null });
+        }
       })
       .catch((err) => {
         if (!cancelled) {
-          setOutcome({ key: requestKey, ready: false, error: { message: err.message, code: err.code } });
+          setOutcome({
+            key: requestKey,
+            ready: false,
+            error: { message: err.message, code: err.code },
+            src: null,
+          });
         }
       });
 
@@ -150,10 +172,21 @@ export function usePlaybackSlot(tileId, label, enabled = true) {
       cancelled = true;
       release(tileId);
     };
+    // `target` on purpose is not listed here: content changes already retrigger
+    // this effect via requestKey (which encodes it), and the closure below
+    // always sees the `target` from the same render that produced that key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claim, release, tileId, label, enabled, requestKey]);
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   const current = outcome.key === requestKey ? outcome : null;
 
-  return { token, tokenRef, ready: !!current?.ready, error: current?.error || null, retry };
+  return {
+    token,
+    tokenRef,
+    src: current?.src || null,
+    ready: !!current?.ready,
+    error: current?.error || null,
+    retry,
+  };
 }
