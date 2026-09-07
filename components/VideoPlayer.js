@@ -17,6 +17,18 @@ const UNSUPPORTED_CONTAINER_MESSAGE = (ext) =>
 const BLACK_FRAME_MESSAGE =
   'O audio esta tocando mas a imagem nao aparece. Isso normalmente acontece quando o video usa um codec que o seu navegador nao suporta (ex: HEVC/H.265). Tente outro navegador (o Safari costuma suportar mais formatos) ou abra o link abaixo em um player como o VLC.';
 
+const CODEC_UNSUPPORTED_MESSAGE =
+  'Seu navegador nao consegue decodificar o video deste canal/conteudo (codec nao suportado, comum em canais 4K/HEVC). Tente outro navegador (o Safari costuma suportar mais formatos) ou abra o link abaixo em um player como o VLC.';
+
+// hls.js's own fatal-error recovery (recoverMediaError/startLoad) is meant for
+// transient glitches. Some fatal errors - an unsupported codec chief among
+// them - can never actually be recovered that way: retrying just repeats the
+// identical failure forever, which without a cap leaves the viewer on the
+// loading spinner indefinitely with no error ever shown. These bound how many
+// times we retry before giving up and surfacing a message.
+const MAX_MEDIA_ERROR_RECOVERIES = 2;
+const MAX_NETWORK_ERROR_RETRIES = 5;
+
 // How often playback position is reported upwards. Anything much tighter
 // would write to localStorage (and re-render subscribers) for no real gain.
 const PROGRESS_INTERVAL_MS = 5000;
@@ -203,11 +215,30 @@ export default function VideoPlayer({
             xhr.open('GET', token ? withPlayToken(url, token) : url, true);
           },
         });
+        let mediaErrorRecoveries = 0;
+        let networkErrorRetries = 0;
         hls.on(Hls.Events.ERROR, (_event, data) => {
           if (cancelled || !data.fatal) return;
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            networkErrorRetries += 1;
+            if (networkErrorRetries > MAX_NETWORK_ERROR_RETRIES) {
+              setStatus('error');
+              setErrorMessage('Falha ao carregar o stream.');
+              return;
+            }
             hls.startLoad();
           } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            // bufferAddCodecError means the browser rejected the codec outright -
+            // no amount of recoverMediaError() will ever fix that, so fail fast
+            // with a clear message instead of retrying forever.
+            const unrecoverable = data.details === 'bufferAddCodecError';
+            mediaErrorRecoveries += 1;
+            if (unrecoverable || mediaErrorRecoveries > MAX_MEDIA_ERROR_RECOVERIES) {
+              setStatus('error');
+              setErrorMessage(unrecoverable ? CODEC_UNSUPPORTED_MESSAGE : 'Falha ao carregar o stream.');
+              setOfferExternalLink(unrecoverable);
+              return;
+            }
             hls.recoverMediaError();
           } else {
             setStatus('error');
