@@ -30,6 +30,11 @@ export async function POST(request) {
     return Response.json({ url });
   } catch (err) {
     console.error('[checkout]', err);
-    return Response.json({ error: err.message || 'Falha ao iniciar o pagamento' }, { status: 502 });
+    // Not 502/503/504: reverse proxies in front of the app (Traefik on
+    // Coolify, Cloudflare, etc.) commonly intercept those "upstream down"
+    // codes and swap in their own generic error page, discarding this JSON
+    // body - which is exactly where the actionable Stripe error message
+    // (e.g. a misconfigured price ID) lives. 400 is passed through untouched.
+    return Response.json({ error: err.message || 'Falha ao iniciar o pagamento' }, { status: 400 });
   }
 }

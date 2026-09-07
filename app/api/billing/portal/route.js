@@ -19,6 +19,9 @@ export async function POST(request) {
     return Response.json({ url });
   } catch (err) {
     console.error('[portal]', err);
-    return Response.json({ error: err.message || 'Falha ao abrir o portal' }, { status: 502 });
+    // See the matching comment in /api/billing/checkout: 400 rather than
+    // 502/503/504 so a reverse proxy in front of the app doesn't swap this
+    // JSON body for its own generic gateway error page.
+    return Response.json({ error: err.message || 'Falha ao abrir o portal' }, { status: 400 });
   }
 }
