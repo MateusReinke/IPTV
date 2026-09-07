@@ -1,4 +1,4 @@
-# Multitela
+# Mosaico Play
 
 Player IPTV (padrão **Xtream Codes**) vendido como assinatura, cujo diferencial
 é a **multitela**: várias transmissões ao vivo ao mesmo tempo, com o áudio

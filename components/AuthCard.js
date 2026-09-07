@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { APP_NAME } from '@/lib/pricing';
+import LogoMark from './LogoMark';
 import styles from './AuthCard.module.css';
 
 // Shared shell for entrar / criar-conta / redefinir-senha.
@@ -10,7 +11,7 @@ export default function AuthCard({ title, subtitle, children, footer }) {
     <main className={styles.page}>
       <div className={styles.card}>
         <Link href="/" className={styles.brand}>
-          <span className={styles.mark} aria-hidden="true" />
+          <LogoMark className={styles.mark} />
           {APP_NAME}
         </Link>
         <h1 className={styles.title}>{title}</h1>

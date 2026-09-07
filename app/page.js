@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getAuth } from '@/lib/server/auth';
 import { TRIAL_DAYS } from '@/lib/entitlements';
 import { APP_NAME, PRICING, formatBRL, monthlyEquivalent } from '@/lib/pricing';
+import LogoMark from '@/components/LogoMark';
 import styles from './page.module.css';
 
 // Public landing page. It reads the session only to decide between "comecar
@@ -71,7 +72,7 @@ export default async function LandingPage() {
     <div className={styles.page}>
       <header className={styles.nav}>
         <span className={styles.brand}>
-          <span className={styles.mark} aria-hidden="true" />
+          <LogoMark className={styles.mark} />
           {APP_NAME}
         </span>
         <nav className={styles.navLinks}>

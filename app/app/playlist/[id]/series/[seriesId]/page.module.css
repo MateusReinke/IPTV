@@ -4,10 +4,7 @@
 }
 
 .topbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 24px;
+  padding: 14px 0;
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
@@ -15,6 +12,15 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   z-index: 5;
+}
+
+.topbarInner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 980px;
+  padding: 0 24px;
+  margin: 0 auto;
 }
 
 .back {
@@ -47,6 +53,7 @@
   gap: 24px;
   padding: 28px 24px;
   max-width: 980px;
+  margin: 0 auto;
 }
 
 .poster {
@@ -127,6 +134,7 @@
 .section {
   padding: 0 24px;
   max-width: 980px;
+  margin: 0 auto;
 }
 
 .seasonTabs {

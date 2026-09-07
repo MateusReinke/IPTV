@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import { usePlaylist } from '@/lib/playlists';
 import { formatClock, isCompleted, progressRatio, useSeriesProgress } from '@/lib/history';
 import { xtreamRequest } from '@/lib/xtream';
+import { goBack } from '@/lib/nav';
 import Button from '@/components/Button';
 import EpisodeRow from '@/components/EpisodeRow';
 import { LoadingState, ErrorState, EmptyState } from '@/components/StateMessage';
@@ -56,7 +57,7 @@ function SeriesDetailContent() {
   if (isLoading || (!data && !error)) {
     return (
       <main className={styles.page}>
-        <TopBar title={fallbackTitle} onBack={() => router.push(`/app/playlist/${id}`)} />
+        <TopBar title={fallbackTitle} onBack={() => goBack(router, `/app/playlist/${id}`)} />
         <LoadingState label="Carregando serie..." />
       </main>
     );
@@ -65,7 +66,7 @@ function SeriesDetailContent() {
   if (error) {
     return (
       <main className={styles.page}>
-        <TopBar title={fallbackTitle} onBack={() => router.push(`/app/playlist/${id}`)} />
+        <TopBar title={fallbackTitle} onBack={() => goBack(router, `/app/playlist/${id}`)} />
         <ErrorState message={error.message} onRetry={() => reload()} />
       </main>
     );
@@ -114,7 +115,7 @@ function SeriesDetailContent() {
 
   return (
     <main className={styles.page}>
-      <TopBar title={name} onBack={() => router.push(`/app/playlist/${id}`)} />
+      <TopBar title={name} onBack={() => goBack(router, `/app/playlist/${id}`)} />
 
       <div className={styles.hero}>
         <span className={styles.poster}>
@@ -217,18 +218,20 @@ function PlayIcon() {
 function TopBar({ title, onBack }) {
   return (
     <header className={styles.topbar}>
-      <button type="button" className={styles.back} onClick={onBack} aria-label="Voltar">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M15 5l-7 7 7 7"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-      <p className={styles.headTitle}>{title}</p>
+      <div className={styles.topbarInner}>
+        <button type="button" className={styles.back} onClick={onBack} aria-label="Voltar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M15 5l-7 7 7 7"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        <p className={styles.headTitle}>{title}</p>
+      </div>
     </header>
   );
 }

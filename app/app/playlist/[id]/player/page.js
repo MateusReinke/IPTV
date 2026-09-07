@@ -14,6 +14,7 @@ import {
   saveProgress,
 } from '@/lib/history';
 import { xtreamRequest } from '@/lib/xtream';
+import { goBack } from '@/lib/nav';
 import VideoPlayer from '@/components/VideoPlayer';
 import { usePlaybackSlot } from '@/components/PlaybackProvider';
 import { useFeature } from '@/components/SessionProvider';
@@ -23,6 +24,9 @@ import styles from './page.module.css';
 
 const IDLE_HIDE_DELAY = 3500;
 const RESUME_NOTICE_MS = 5000;
+// Xtream doesn't hand us per-episode opening-credits markers, so this is a
+// generic window covering most TV intros rather than an exact one.
+const INTRO_SKIP_SECONDS = 90;
 
 export default function PlayerPage() {
   return (
@@ -58,7 +62,19 @@ function PlayerContent() {
 
   const [controlsVisible, setControlsVisible] = useState(true);
   const [noticeDoneFor, setNoticeDoneFor] = useState(null);
+  const [playbackTime, setPlaybackTime] = useState(0);
+  const [dismissedIntroFor, setDismissedIntroFor] = useState(null);
   const idleTimerRef = useRef(null);
+  const videoActionsRef = useRef(null);
+
+  // Fresh window for every episode - resetting derived state on a prop
+  // change during render (rather than in an effect) avoids an extra render
+  // pass. See https://react.dev/learn/you-might-not-need-an-effect
+  const [trackedStreamId, setTrackedStreamId] = useState(streamId);
+  if (streamId !== trackedStreamId) {
+    setTrackedStreamId(streamId);
+    setPlaybackTime(0);
+  }
 
   // One picture on screen = one lease. The src that comes back is already
   // pointed at /api/stream with the account's credentials encrypted server-
@@ -152,6 +168,15 @@ function PlayerContent() {
   const handleEnded = useCallback(() => {
     if (nextEpisode) goToEpisode(nextEpisode);
   }, [goToEpisode, nextEpisode]);
+
+  const showSkipIntro =
+    kind === 'series' && dismissedIntroFor !== streamId && playbackTime < INTRO_SKIP_SECONDS;
+
+  function handleSkipIntro() {
+    videoActionsRef.current?.seek(INTRO_SKIP_SECONDS);
+    setPlaybackTime(INTRO_SKIP_SECONDS);
+    setDismissedIntroFor(streamId);
+  }
 
   // Only whether a playlist exists matters here; depending on the object would
   // re-arm these on every library write.
@@ -259,7 +284,7 @@ function PlayerContent() {
             message={slotError.message}
             showUpgrade={slotError.code === 'SCREEN_LIMIT'}
             onRetry={retrySlot}
-            onBack={() => router.push(`/app/playlist/${id}`)}
+            onBack={() => goBack(router, `/app/playlist/${id}`)}
           />
         </div>
       </main>
@@ -291,15 +316,18 @@ function PlayerContent() {
           ext={ext}
           onEnded={handleEnded}
           onProgress={handleProgress}
+          onTimeUpdate={setPlaybackTime}
           startPosition={resumeAt}
           tokenRef={tokenRef}
+          actionsRef={videoActionsRef}
+          controls={controlsVisible}
         />
 
         <div className={`${styles.overlayTop} ${controlsVisible ? '' : styles.hidden}`}>
           <button
             type="button"
             className={styles.iconBtn}
-            onClick={() => router.back()}
+            onClick={() => goBack(router, `/app/playlist/${id}`)}
             aria-label="Voltar"
           >
             <BackIcon />
@@ -310,6 +338,19 @@ function PlayerContent() {
         </div>
 
         {resumeNotice && <p className={styles.resumeNotice}>{resumeNotice}</p>}
+
+        {showSkipIntro && (
+          <button
+            type="button"
+            className={styles.skipIntroBtn}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSkipIntro();
+            }}
+          >
+            Pular abertura
+          </button>
+        )}
 
         {prevEpisode && (
           <button

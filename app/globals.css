@@ -114,6 +114,15 @@ input {
   background: var(--text-faint);
 }
 
+/* Default keyboard-focus ring in the brand accent, so tab-focusing anything
+   without its own focus treatment doesn't fall back to the browser's blue
+   outline clashing with the dark red/black theme. Components that already
+   define their own focus-visible look (cards, the hero) override this. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

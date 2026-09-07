@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { Suspense, useMemo, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { usePlaylist } from '@/lib/playlists';
 import { accountIsActive, xtreamRequest } from '@/lib/xtream';
 import { normalize } from '@/lib/text';
 import { toFavoriteEntry, toggleFavorite, useFavoriteKeys, useFavorites } from '@/lib/favorites';
+import { pickWeightedByRating } from '@/lib/shuffle';
 import {
   clearHistory,
   formatWatchedAt,
@@ -29,7 +30,7 @@ import StatusPill from '@/components/StatusPill';
 import Button from '@/components/Button';
 import Hero from '@/components/Hero';
 import { SkeletonGrid, SkeletonChips } from '@/components/Skeleton';
-import { ErrorState, EmptyState } from '@/components/StateMessage';
+import { ErrorState, EmptyState, LoadingState } from '@/components/StateMessage';
 import styles from './page.module.css';
 
 const TABS = [
@@ -57,15 +58,39 @@ const TABS = [
 ];
 
 const KIND_LABEL = { live: 'Ao vivo', movie: 'Filme', series: 'Serie' };
+const VALID_TABS = ['live', 'movie', 'series', 'favorites', 'history'];
 
 export default function BrowsePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className={styles.shell}>
+          <LoadingState label="Carregando..." />
+        </main>
+      }
+    >
+      <BrowseContent />
+    </Suspense>
+  );
+}
+
+function BrowseContent() {
   const { id } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const playlist = usePlaylist(id);
 
-  const [activeTab, setActiveTab] = useState('live');
-  const [activeCategory, setActiveCategory] = useState({});
+  // The active tab/category live in the URL (not just component state) so
+  // that navigating away (a series, the player) and back restores the exact
+  // screen the user left, instead of resetting to the default Live TV tab.
+  const initialTab = VALID_TABS.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'live';
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeCategory, setActiveCategory] = useState(() => {
+    const cat = searchParams.get('cat');
+    return cat ? { [initialTab]: cat } : {};
+  });
   const [search, setSearch] = useState('');
+  const [shuffling, setShuffling] = useState(false);
   const isSearching = search.trim().length > 0;
   const isFavoritesTab = activeTab === 'favorites';
   const isHistoryTab = activeTab === 'history';
@@ -159,14 +184,23 @@ export default function BrowsePage() {
     canSeeHistory && !isLocalTab && !isSearching && continueWatching.length > 0;
   const historyLocked = isHistoryTab && !canSeeHistory;
 
+  function updateUrl(tab, catId) {
+    const params = new URLSearchParams();
+    params.set('tab', tab);
+    if (catId) params.set('cat', catId);
+    router.replace(`/app/playlist/${id}?${params.toString()}`);
+  }
+
   function selectTab(tab) {
     setActiveTab(tab);
     setSearch('');
+    updateUrl(tab, activeCategory[tab]);
   }
 
   function selectCategory(catId) {
     setActiveCategory((prev) => ({ ...prev, [activeTab]: catId }));
     setSearch('');
+    updateUrl(activeTab, catId);
   }
 
   function goToPlayer(params) {
@@ -258,6 +292,27 @@ export default function BrowsePage() {
     clearHistory(playlist.id);
   }
 
+  const canShuffle = !isLocalTab && (activeTab === 'movie' || activeTab === 'series');
+
+  // Draws from the whole tab catalog (every category), not just the open
+  // folder, so "surpreenda-me" has real variety to pick from.
+  async function handleShuffle() {
+    if (!playlist || shuffling) return;
+    setShuffling(true);
+    try {
+      const list =
+        allItems && allItems.length > 0
+          ? allItems
+          : await xtreamRequest(playlist, tabConfig.streamAction).then((res) =>
+              Array.isArray(res) ? res : []
+            );
+      const pick = pickWeightedByRating(list);
+      if (pick) openItem(pick);
+    } finally {
+      setShuffling(false);
+    }
+  }
+
   if (playlist === null) {
     return (
       <main className={styles.shell}>
@@ -323,7 +378,7 @@ export default function BrowsePage() {
 
           {!isLocalTab && !historyLocked && (
             <div className={styles.categorySection}>
-              {categoriesLoading && <SkeletonChips count={7} />}
+              {categoriesLoading && <SkeletonChips count={12} />}
               {categoriesError && (
                 <ErrorState message={categoriesError.message} onRetry={() => reloadCategories()} />
               )}
@@ -354,6 +409,12 @@ export default function BrowsePage() {
                 {filteredItems.length}{' '}
                 {filteredItems.length === 1 ? 'resultado' : 'resultados'} em todas as categorias
               </span>
+            )}
+            {canShuffle && !isSearching && (
+              <Button variant="ghost" loading={shuffling} onClick={handleShuffle}>
+                {!shuffling && <ShuffleIcon />}
+                {activeTab === 'movie' ? 'Sortear um filme' : 'Sortear uma serie'}
+              </Button>
             )}
             {isHistoryTab && history.length > 0 && (
               <Button variant="ghost" onClick={handleClearHistory}>
@@ -436,6 +497,20 @@ export default function BrowsePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function ShuffleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M17 3h4v4M21 3l-6.5 6.5M3 7h3.5c1.8 0 2.7.7 3.8 2M21 21h-4v-4M8 8l9.5 9.5M3 17h3.5c1.8 0 2.7-.7 3.8-2"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
