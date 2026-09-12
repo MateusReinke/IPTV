@@ -20,6 +20,7 @@ import {
 } from '@/lib/history';
 import { useFeature } from '@/components/SessionProvider';
 import UpgradeNotice from '@/components/UpgradeNotice';
+import AiPickDialog from '@/components/AiPickDialog';
 import NavRail from '@/components/NavRail';
 import SearchBox from '@/components/SearchBox';
 import CategoryList from '@/components/CategoryList';
@@ -91,6 +92,7 @@ function BrowseContent() {
   });
   const [search, setSearch] = useState('');
   const [shuffling, setShuffling] = useState(false);
+  const [aiPickOpen, setAiPickOpen] = useState(false);
   const isSearching = search.trim().length > 0;
   const isFavoritesTab = activeTab === 'favorites';
   const isHistoryTab = activeTab === 'history';
@@ -293,6 +295,9 @@ function BrowseContent() {
   }
 
   const canShuffle = !isLocalTab && (activeTab === 'movie' || activeTab === 'series');
+  // The recommender reads the movie catalog, so it is offered where that
+  // catalog is what the user is looking at.
+  const canAskAi = activeTab === 'movie' && !isSearching;
 
   // Draws from the whole tab catalog (every category), not just the open
   // folder, so "surpreenda-me" has real variety to pick from.
@@ -416,6 +421,12 @@ function BrowseContent() {
                 {activeTab === 'movie' ? 'Sortear um filme' : 'Sortear uma serie'}
               </Button>
             )}
+            {canAskAi && (
+              <Button variant="secondary" onClick={() => setAiPickOpen(true)}>
+                <SparkIcon />
+                Indicacao da IA
+              </Button>
+            )}
             {isHistoryTab && history.length > 0 && (
               <Button variant="ghost" onClick={handleClearHistory}>
                 Limpar historico
@@ -496,7 +507,35 @@ function BrowseContent() {
           )}
         </div>
       </main>
+
+      {aiPickOpen && playlist && (
+        <AiPickDialog
+          playlist={playlist}
+          categories={categories}
+          history={history}
+          favorites={favorites}
+          onClose={() => setAiPickOpen(false)}
+          onPlay={(pick) => {
+            setAiPickOpen(false);
+            goToPlayer({
+              type: 'movie',
+              streamId: String(pick.id),
+              ext: pick.ext || 'mp4',
+              title: pick.name || '',
+              poster: pick.image || '',
+            });
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function SparkIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 3l1.8 4.8L18.6 9.6l-4.8 1.8L12 16.2l-1.8-4.8L5.4 9.6l4.8-1.8L12 3zM18 15l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9.9-2.4z" />
+    </svg>
   );
 }
 

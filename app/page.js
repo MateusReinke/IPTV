@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { getAuth } from '@/lib/server/auth';
-import { TRIAL_DAYS } from '@/lib/entitlements';
+import { AI_PICK_COOLDOWN_DAYS, TRIAL_DAYS } from '@/lib/entitlements';
 import { APP_NAME, PRICING, formatBRL, monthlyEquivalent } from '@/lib/pricing';
 import LogoMark from '@/components/LogoMark';
 import styles from './page.module.css';
@@ -22,6 +22,10 @@ const FEATURES = [
   {
     title: 'Voce escolhe de onde vem o audio',
     body: 'Um clique (ou as teclas 1 a 9) move o som para a tela que interessa. As outras continuam rodando em silencio.',
+  },
+  {
+    title: 'A IA escolhe o filme por voce',
+    body: `Diga o genero e a indicacao sai do seu proprio catalogo, lendo o que voce ja assistiu e favoritou. No plano gratuito, uma indicacao a cada ${AI_PICK_COOLDOWN_DAYS} dias.`,
   },
   {
     title: 'Continua de onde parou',
@@ -52,7 +56,11 @@ const FAQ = [
   },
   {
     q: 'O que acontece quando o teste acaba?',
-    a: 'Sua conta continua funcionando com uma tela por vez. Multitela, historico e sincronizacao voltam assim que voce assinar.',
+    a: `Sua conta continua funcionando com uma tela por vez, e a indicacao da IA passa a valer uma vez a cada ${AI_PICK_COOLDOWN_DAYS} dias. Multitela, historico, sincronizacao e indicacoes ilimitadas voltam assim que voce assinar.`,
+  },
+  {
+    q: 'Como a IA escolhe o filme?',
+    a: 'Voce escolhe o genero e ela compara o catalogo do seu provedor com o que voce ja assistiu e favoritou, devolvendo um titulo e o motivo de ele combinar com voce. Nada e enviado para fora alem do seu historico de titulos: as credenciais do provedor nunca saem do seu aparelho.',
   },
   {
     q: 'Quantos aparelhos posso usar?',
@@ -182,6 +190,7 @@ export default async function LandingPage() {
                 <li>Audio selecionavel por tela</li>
                 <li>Historico e continuar assistindo</li>
                 <li>Sincronizacao entre aparelhos</li>
+                <li>Indicacao da IA sem limite</li>
                 <li>{plan.note}</li>
               </ul>
               <Link className={styles.btnPrimaryLarge} href={signedIn ? '/app/conta' : '/criar-conta'}>
