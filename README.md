@@ -58,7 +58,7 @@ Serve **OpenAI ou Anthropic**, basta uma chave:
 | --- | --- | --- |
 | `OPENAI_API_KEY` | — | Liga a indicação via OpenAI |
 | `OPENAI_MODEL` | `gpt-5.4-mini` | Troca o modelo |
-| `OPENAI_BASE_URL` | API da OpenAI | Endpoint compatível (Azure, proxy) |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Deixe vazia na OpenAI normal; só para Azure, proxy ou endpoint compatível |
 | `ANTHROPIC_API_KEY` | — | Liga a indicação via Claude |
 | `ANTHROPIC_MODEL` | `claude-opus-5` | Troca o modelo |
 | `AI_PROVIDER` | a chave que existir | `openai`, `anthropic` ou `local` |
