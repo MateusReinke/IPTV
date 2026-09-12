@@ -1,0 +1,33 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-faint);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.active {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.warn {
+  color: #f2b95c;
+  background: rgba(242, 185, 92, 0.12);
+}
+
+.danger {
+  color: var(--danger);
+  background: var(--danger-bg);
+}

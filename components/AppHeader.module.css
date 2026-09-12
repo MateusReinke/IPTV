@@ -1,0 +1,133 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: var(--app-header-h);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 18px;
+  background: rgba(12, 8, 8, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+}
+
+.mark {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar {
+  display: none;
+}
+
+.link {
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-faint);
+  white-space: nowrap;
+  transition:
+    color 0.15s var(--ease),
+    background-color 0.15s var(--ease);
+}
+
+.link:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.linkActive {
+  color: var(--text);
+  background: var(--surface-active);
+}
+
+.right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.badgeTrial {
+  color: var(--text);
+  background: var(--surface-active);
+}
+
+.badgeUrgent {
+  color: var(--accent-contrast);
+  background: var(--accent);
+}
+
+.badgePremium {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.badgeUpgrade {
+  color: var(--accent-contrast);
+  background: linear-gradient(150deg, var(--accent), var(--accent-strong));
+}
+
+.logout {
+  font-size: 13px;
+  color: var(--text-faint);
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.logout:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+@media (max-width: 640px) {
+  .header {
+    gap: 10px;
+    padding: 0 12px;
+  }
+
+  .brand span:last-child {
+    display: none;
+  }
+
+  .link {
+    padding: 6px 9px;
+    font-size: 12.5px;
+  }
+
+  .logout {
+    display: none;
+  }
+}

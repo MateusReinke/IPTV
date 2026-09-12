@@ -1,0 +1,219 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition: transform 0.25s var(--ease);
+}
+
+.card:hover,
+.card:focus-visible {
+  transform: translateY(-6px);
+}
+
+.card:focus-visible {
+  outline: none;
+}
+
+.thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  transition:
+    border-color 0.25s var(--ease),
+    box-shadow 0.25s var(--ease);
+}
+
+.portrait {
+  aspect-ratio: 2 / 3;
+}
+
+.card:hover .thumb,
+.card:focus-visible .thumb {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-lg), 0 0 0 3px var(--accent-soft);
+}
+
+.img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s var(--ease);
+}
+
+.card:hover .img,
+.card:focus-visible .img {
+  transform: scale(1.06);
+}
+
+.landscape .img {
+  object-fit: contain;
+  padding: 10px;
+}
+
+.card:hover .landscape .img,
+.card:focus-visible .landscape .img {
+  transform: scale(1.1);
+}
+
+.fallback {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-faint);
+  background: linear-gradient(160deg, var(--surface-hover), var(--surface));
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.playBadge {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(11, 11, 14, 0) 40%, rgba(11, 11, 14, 0.65) 100%);
+  opacity: 0;
+  transition: opacity 0.2s var(--ease);
+  color: #fff;
+}
+
+.playBadge svg {
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+  transform: scale(0.85);
+  transition: transform 0.25s var(--ease);
+}
+
+.card:hover .playBadge,
+.card:focus-visible .playBadge {
+  opacity: 1;
+}
+
+.card:hover .playBadge svg,
+.card:focus-visible .playBadge svg {
+  transform: scale(1);
+}
+
+.favBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(10, 8, 8, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #fff;
+  opacity: 0.7;
+  transition:
+    opacity 0.15s var(--ease),
+    background-color 0.15s var(--ease),
+    transform 0.15s var(--ease);
+}
+
+.favBtn:hover {
+  opacity: 1;
+  background: rgba(10, 8, 8, 0.8);
+  transform: scale(1.08);
+}
+
+.favBtnActive {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.removeBtn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(10, 8, 8, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #fff;
+  opacity: 0;
+  transition:
+    opacity 0.15s var(--ease),
+    background-color 0.15s var(--ease);
+}
+
+.card:hover .removeBtn,
+.card:focus-within .removeBtn,
+.removeBtn:focus-visible {
+  opacity: 0.85;
+}
+
+.removeBtn:hover {
+  opacity: 1;
+  background: var(--accent-strong);
+}
+
+.progressTrack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.progressBar {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-dim);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  transition: color 0.2s var(--ease);
+}
+
+.card:hover .name,
+.card:focus-visible .name {
+  color: var(--text);
+}
+
+.subtitle {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
