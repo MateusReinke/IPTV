@@ -46,11 +46,25 @@ filme, com o motivo de ele combinar com a conta.
    títulos, favoritos). A lista sai do catálogo que o navegador já tem — o
    servidor nunca precisa das credenciais do provedor para isso.
 2. `POST /api/recommend` reserva a cota do plano, manda perfil e lista para o
-   Claude (`claude-opus-5`, resposta em JSON validado contra a lista) e devolve
-   o filme, o motivo e até duas alternativas.
-3. **Sem `ANTHROPIC_API_KEY`** — ou se a chamada falhar — o mesmo pedido é
-   respondido pelo ranking local do servidor (nota do título + gêneros que a
-   conta assiste) e a tela diz que a indicação não veio da IA.
+   modelo (resposta em JSON validada contra a lista enviada) e devolve o filme,
+   o motivo e até duas alternativas.
+3. **Sem chave de IA** — ou se a chamada falhar — o mesmo pedido é respondido
+   pelo ranking local do servidor (nota do título + gêneros que a conta
+   assiste) e a tela diz que a indicação não veio da IA.
+
+Serve **OpenAI ou Anthropic**, basta uma chave:
+
+| Variável | Padrão | Para quê |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | — | Liga a indicação via OpenAI |
+| `OPENAI_MODEL` | `gpt-5.4-mini` | Troca o modelo |
+| `OPENAI_BASE_URL` | API da OpenAI | Endpoint compatível (Azure, proxy) |
+| `ANTHROPIC_API_KEY` | — | Liga a indicação via Claude |
+| `ANTHROPIC_MODEL` | `claude-opus-5` | Troca o modelo |
+| `AI_PROVIDER` | a chave que existir | `openai`, `anthropic` ou `local` |
+
+Com as duas chaves presentes e sem `AI_PROVIDER`, vale a OpenAI. A chave fica
+só no servidor — nada de `NEXT_PUBLIC_`, ela nunca entra no bundle.
 
 A cota gratuita é uma reserva no banco (`ai_picks`), tomada **antes** da
 indicação e devolvida se nada for indicado: uma falha do provedor não custa a
@@ -112,8 +126,9 @@ cadastrar e o painel `/admin` apareça.
 | `APP_ENCRYPTION_KEY` | recomendada | Criptografa favoritos/histórico no banco. Sem ela a sincronização fica desligada. Aceita 32 bytes em base64 ou qualquer texto aleatório com 16+ caracteres |
 | `ADMIN_EMAILS` | recomendada | Quem vira admin ao se cadastrar |
 | `STREAM_TOKEN_SECRET` | não | O app gera e guarda a chave sozinho quando ausente |
-| `ANTHROPIC_API_KEY` | não | Liga a indicação da IA. Sem ela, o servidor indica pelo ranking local |
-| `ANTHROPIC_MODEL` | não | Troca o modelo usado (padrão `claude-opus-5`) |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | não | Liga a indicação da IA (basta uma). Sem nenhuma, o servidor indica pelo ranking local |
+| `OPENAI_MODEL` / `ANTHROPIC_MODEL` | não | Troca o modelo usado |
+| `AI_PROVIDER` | não | Decide o provedor quando as duas chaves existem |
 | `NEXT_PUBLIC_AI_PICK_COOLDOWN_DAYS` | não | Intervalo entre indicações no plano gratuito (padrão 15) |
 | `STRIPE_*` | não | Pagamento online; sem elas, liberação manual pelo painel |
 
@@ -293,7 +308,7 @@ lib/
     auth.js                   senhas (scrypt) e sessões
     leases.js playToken.js    limite de telas e tokens de reprodução
     libraryStore.js           biblioteca criptografada em repouso
-    recommend.js              prompt do Claude + ranking local de emergência
+    recommend.js              prompt, provedores (OpenAI/Claude) e ranking local
     picks.js                  cota da indicação da IA (reserva/devolução)
     billing.js                adaptador de pagamento (Stripe)
     admin.js                  métricas e ações administrativas
@@ -315,10 +330,10 @@ scripts/setup-env.sh          gera o .env com segredos aleatorios
   porque obtê-lo já exige uma conta ativa.
 - **Nove telas exigem uma máquina razoável.** São nove decodificadores de vídeo
   simultâneos; em celulares antigos, quatro já é bastante.
-- **A indicação da IA custa por uso.** Cada pedido é uma chamada paga à API do
-  Claude; a cota do plano gratuito e o limite de 20 pedidos por hora por conta
-  existem para que isso não vire uma conta aberta. Sem `ANTHROPIC_API_KEY` o
-  recurso continua de pé, mas quem escolhe é o ranking local.
+- **A indicação da IA custa por uso.** Cada pedido é uma chamada paga ao
+  provedor configurado; a cota do plano gratuito e o limite de 20 pedidos por
+  hora por conta existem para que isso não vire uma conta aberta. Sem chave
+  nenhuma o recurso continua de pé, mas quem escolhe é o ranking local.
 
 ## Aviso
 

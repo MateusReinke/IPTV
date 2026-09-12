@@ -53,9 +53,14 @@ services:
       # Opcionais - o app funciona sem elas.
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       APP_URL: ${APP_URL:-}
-      # Sem a chave a indicacao da IA cai no ranking local do proprio servidor.
+      # Indicacao da IA: basta uma das chaves. Sem nenhuma, o servidor cai no
+      # ranking local.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      AI_PROVIDER: ${AI_PROVIDER:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_PRICE_MONTHLY: ${STRIPE_PRICE_MONTHLY:-}

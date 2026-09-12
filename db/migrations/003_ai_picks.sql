@@ -14,8 +14,8 @@ create table ai_picks (
   plan text not null,
   kind text not null default 'movie',
   genre text,
-  -- 'claude' when the model answered, 'local' when the server fell back to
-  -- its own ranking (no ANTHROPIC_API_KEY configured, or the call failed).
+  -- Which provider answered: 'openai' / 'claude', or 'local' when the server
+  -- fell back to its own ranking (no API key configured, or the call failed).
   engine text,
   pick_name text,
   created_at timestamptz not null default now()

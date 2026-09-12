@@ -1,7 +1,7 @@
 import { getRequestAuth } from '@/lib/server/auth';
 import { describeDatabaseError } from '@/lib/server/db';
 import { aiPickStatus, releaseAiPick, reserveAiPick, settleAiPick } from '@/lib/server/picks';
-import { aiConfigured, recommend, sanitizeCandidates, sanitizeProfile } from '@/lib/server/recommend';
+import { aiProvider, recommend, sanitizeCandidates, sanitizeProfile } from '@/lib/server/recommend';
 import { clientIp, rateLimit, tooManyRequests } from '@/lib/server/rateLimit';
 
 export const runtime = 'nodejs';
@@ -22,7 +22,7 @@ export async function GET(request) {
 
   try {
     const status = await aiPickStatus(auth.user.id, auth.entitlements);
-    return Response.json({ ...status, plan: auth.entitlements.plan, engine: engineName() });
+    return Response.json({ ...status, plan: auth.entitlements.plan, engine: aiProvider() || 'local' });
   } catch (err) {
     console.error('[recommend] status falhou', err);
     return Response.json({ error: describeDatabaseError(err) }, { status: 503 });
@@ -121,8 +121,4 @@ export async function POST(request) {
     degraded: !!result.degraded,
     quota,
   });
-}
-
-function engineName() {
-  return aiConfigured() ? 'claude' : 'local';
 }

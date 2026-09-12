@@ -302,7 +302,7 @@ function PickResult({ result, quota, busy, error, onPlay, onRetry }) {
         <p className={styles.engineNote}>
           {result.degraded
             ? 'A IA nao respondeu agora: esta indicacao veio do ranking do proprio servidor.'
-            : 'Este servidor esta sem ANTHROPIC_API_KEY, entao a indicacao veio do ranking local (nota + generos que voce assiste).'}
+            : 'Este servidor ainda nao tem uma chave de IA configurada, entao a indicacao veio do ranking local (nota + generos que voce assiste).'}
         </p>
       )}
       {quota && quota.unlimited === false && quota.nextAvailableAt && (
