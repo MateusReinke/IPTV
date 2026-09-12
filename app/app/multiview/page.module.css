@@ -1,0 +1,136 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 18px;
+  height: calc(100dvh - var(--app-header-h));
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  padding: 8px 10px;
+  max-width: 220px;
+}
+
+.layouts {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.layoutBtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 38px;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-faint);
+  transition:
+    color 0.15s var(--ease),
+    background-color 0.15s var(--ease);
+}
+
+.layoutBtn:hover {
+  color: var(--text);
+}
+
+.layoutActive {
+  color: var(--accent-contrast);
+  background: var(--accent);
+}
+
+.layoutActive:hover {
+  color: var(--accent-contrast);
+}
+
+.layoutLocked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.hint {
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.upsell {
+  font-size: 13px;
+  color: var(--text-dim);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-strong);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+}
+
+.upsellLink {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--columns, 2), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--rows, 2), minmax(0, 1fr));
+  gap: 10px;
+  background: var(--bg);
+}
+
+.grid:fullscreen {
+  padding: 10px;
+}
+
+.centerAction {
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 10px;
+    height: auto;
+    min-height: calc(100dvh - var(--app-header-h));
+  }
+
+  .grid {
+    /* Stacking beats squeezing four unreadable pictures onto a phone. */
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-auto-rows: minmax(180px, 1fr);
+  }
+
+  .hint {
+    display: none;
+  }
+}

@@ -1,15 +1,29 @@
 import { buildPlayerApiUrl } from '@/lib/xtream';
+import { getRequestAuth } from '@/lib/server/auth';
 
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ALLOWED_PARAMS = ['category_id', 'series_id', 'vod_id', 'stream_id', 'limit'];
 
-export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const server = searchParams.get('server');
-  const username = searchParams.get('username');
-  const password = searchParams.get('password');
-  const action = searchParams.get('action') || undefined;
+// POST rather than GET so the account's server/username/password travel in
+// the request body instead of the URL - a query string ends up in the
+// browser's history, in the Network panel's URL column and in any access log
+// that records the request line, none of which should ever see a password.
+
+export async function POST(request) {
+  // Catalog calls are not on the hot path, so a session lookup per request is
+  // affordable - and it stops the proxy being usable by anyone with the URL.
+  const auth = await getRequestAuth(request);
+  if (!auth) {
+    return Response.json({ error: 'Faca login para carregar a playlist' }, { status: 401 });
+  }
+
+  const body = await request.json().catch(() => null);
+  const server = body?.server;
+  const username = body?.username;
+  const password = body?.password;
+  const action = body?.action || undefined;
 
   if (!server || !username || !password) {
     return Response.json(
@@ -20,7 +34,7 @@ export async function GET(request) {
 
   const extraParams = {};
   for (const key of ALLOWED_PARAMS) {
-    const value = searchParams.get(key);
+    const value = body?.[key];
     if (value) extraParams[key] = value;
   }
 

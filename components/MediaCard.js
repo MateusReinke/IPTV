@@ -12,6 +12,9 @@ export default function MediaCard({
   onClick,
   favorited,
   onToggleFavorite,
+  progress = 0,
+  onRemove,
+  removeLabel = 'Remover',
 }) {
   const [broken, setBroken] = useState(false);
   const showImage = image && !broken;
@@ -63,6 +66,35 @@ export default function MediaCard({
           >
             <HeartIcon filled={!!favorited} />
           </button>
+        )}
+        {onRemove && (
+          <button
+            type="button"
+            className={styles.removeBtn}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            aria-label={removeLabel}
+            title={removeLabel}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M6 6l12 12M18 6L6 18"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        )}
+        {progress > 0 && (
+          <span className={styles.progressTrack} aria-hidden="true">
+            <span
+              className={styles.progressBar}
+              style={{ width: `${Math.min(100, Math.max(3, progress * 100))}%` }}
+            />
+          </span>
         )}
       </span>
       <span className={styles.body}>

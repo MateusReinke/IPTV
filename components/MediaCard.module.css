@@ -139,6 +139,53 @@
   color: var(--accent);
 }
 
+.removeBtn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(10, 8, 8, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #fff;
+  opacity: 0;
+  transition:
+    opacity 0.15s var(--ease),
+    background-color 0.15s var(--ease);
+}
+
+.card:hover .removeBtn,
+.card:focus-within .removeBtn,
+.removeBtn:focus-visible {
+  opacity: 0.85;
+}
+
+.removeBtn:hover {
+  opacity: 1;
+  background: var(--accent-strong);
+}
+
+.progressTrack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.progressBar {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
 .body {
   display: flex;
   flex-direction: column;
