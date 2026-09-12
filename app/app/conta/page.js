@@ -82,7 +82,8 @@ function AccountContent() {
           <section className={styles.plans}>
             <h2 className={styles.sectionTitle}>Assinar o Premium</h2>
             <p className={styles.sectionLead}>
-              Ate 9 telas ao mesmo tempo, audio selecionavel, historico e sincronizacao.
+              Ate 9 telas ao mesmo tempo, audio selecionavel, historico, sincronizacao e
+              indicacao da IA sem limite de uso.
             </p>
             <div className={styles.planGrid}>
               {Object.values(PRICING).map((plan) => (
@@ -145,6 +146,12 @@ function PlanCard({ entitlements, onPortal, busy }) {
   }
   rows.push(['Telas simultaneas', String(entitlements.features.screens)]);
   rows.push(['Historico e sincronizacao', entitlements.features.history ? 'Incluidos' : 'Bloqueados']);
+  rows.push([
+    'Indicacao da IA',
+    entitlements.features.aiPickCooldownDays > 0
+      ? `1 a cada ${entitlements.features.aiPickCooldownDays} dias`
+      : 'Sem limite',
+  ]);
 
   return (
     <section className={styles.planCard}>

@@ -43,6 +43,7 @@ services:
         NEXT_PUBLIC_TRIAL_DAYS: ${NEXT_PUBLIC_TRIAL_DAYS:-7}
         NEXT_PUBLIC_PRICE_MONTHLY: ${NEXT_PUBLIC_PRICE_MONTHLY:-19.90}
         NEXT_PUBLIC_PRICE_YEARLY: ${NEXT_PUBLIC_PRICE_YEARLY:-199}
+        NEXT_PUBLIC_AI_PICK_COOLDOWN_DAYS: ${NEXT_PUBLIC_AI_PICK_COOLDOWN_DAYS:-15}
     restart: unless-stopped
     environment:
       DATABASE_URL: postgres://multitela:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/multitela
@@ -52,6 +53,14 @@ services:
       # Opcionais - o app funciona sem elas.
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       APP_URL: ${APP_URL:-}
+      # Indicacao da IA: basta uma das chaves. Sem nenhuma, o servidor cai no
+      # ranking local.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      AI_PROVIDER: ${AI_PROVIDER:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_PRICE_MONTHLY: ${STRIPE_PRICE_MONTHLY:-}
