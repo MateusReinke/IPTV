@@ -23,7 +23,7 @@ export async function POST(request) {
   }
 
   const body = await request.json().catch(() => null);
-  const planId = body?.plan === 'yearly' ? 'yearly' : 'monthly';
+  const planId = ['yearly', 'once'].includes(body?.plan) ? body.plan : 'monthly';
 
   try {
     const url = await startCheckout({ user: auth.user, planId, origin: origin(request) });

@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useSession } from '@/components/SessionProvider';
 import SyncPanel from '@/components/SyncPanel';
 import Button from '@/components/Button';
-import { PRICING, formatBRL, monthlyEquivalent } from '@/lib/pricing';
+import { PRICING, formatBRL, monthlyEquivalent, yearlySavings } from '@/lib/pricing';
 import { TRIAL_DAYS } from '@/lib/entitlements';
 import styles from './page.module.css';
 
@@ -90,14 +90,19 @@ function AccountContent() {
                   key={plan.id}
                   className={`${styles.plan} ${plan.id === 'yearly' ? styles.planFeatured : ''}`}
                 >
+                  {plan.id === 'yearly' && (
+                    <span className={styles.planBadge}>
+                      Economize {yearlySavings().percent}%
+                    </span>
+                  )}
                   <h3 className={styles.planName}>{plan.label}</h3>
                   <p className={styles.planPrice}>
                     {formatBRL(plan.amount)}
-                    <span className={styles.planPeriod}>/{plan.period}</span>
+                    {plan.period && <span className={styles.planPeriod}>/{plan.period}</span>}
                   </p>
                   <p className={styles.planNote}>
                     {plan.period === 'ano'
-                      ? `${formatBRL(monthlyEquivalent(plan))} por mes`
+                      ? `${formatBRL(monthlyEquivalent(plan))} por mes - economize ${formatBRL(yearlySavings().amount)} no ano`
                       : plan.note}
                   </p>
                   <Button
@@ -106,7 +111,7 @@ function AccountContent() {
                     loading={busy === plan.id}
                     onClick={() => startCheckout(plan.id)}
                   >
-                    Assinar {plan.label.toLowerCase()}
+                    {plan.id === 'once' ? 'Comprar avulso' : `Assinar ${plan.label.toLowerCase()}`}
                   </Button>
                 </article>
               ))}
