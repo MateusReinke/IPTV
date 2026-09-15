@@ -93,7 +93,7 @@ function AccountContent() {
                   <h3 className={styles.planName}>{plan.label}</h3>
                   <p className={styles.planPrice}>
                     {formatBRL(plan.amount)}
-                    <span className={styles.planPeriod}>/{plan.period}</span>
+                    {plan.period && <span className={styles.planPeriod}>/{plan.period}</span>}
                   </p>
                   <p className={styles.planNote}>
                     {plan.period === 'ano'
@@ -106,7 +106,7 @@ function AccountContent() {
                     loading={busy === plan.id}
                     onClick={() => startCheckout(plan.id)}
                   >
-                    Assinar {plan.label.toLowerCase()}
+                    {plan.id === 'once' ? 'Comprar avulso' : `Assinar ${plan.label.toLowerCase()}`}
                   </Button>
                 </article>
               ))}
