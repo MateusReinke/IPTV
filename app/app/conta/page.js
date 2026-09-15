@@ -55,6 +55,21 @@ function AccountContent() {
     }
   }
 
+  async function renewSubscription() {
+    setBusy('renew');
+    setError('');
+    try {
+      const res = await fetch('/api/billing/renew', { method: 'POST' });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'Nao foi possivel renovar a assinatura');
+      await refresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy('');
+    }
+  }
+
   return (
     <main className={styles.page}>
       <div className={styles.container}>
@@ -76,7 +91,13 @@ function AccountContent() {
           <p className={styles.notice}>Pagamento cancelado. Nenhuma cobranca foi feita.</p>
         )}
 
-        <PlanCard entitlements={entitlements} onPortal={openPortal} busy={busy} />
+        <PlanCard
+          entitlements={entitlements}
+          onPortal={openPortal}
+          onRenew={renewSubscription}
+          busy={busy}
+        />
+        {entitlements?.plan === 'premium' && error && <p className={styles.error}>{error}</p>}
 
         {entitlements?.plan !== 'premium' && (
           <section className={styles.plans}>
@@ -126,7 +147,7 @@ function AccountContent() {
   );
 }
 
-function PlanCard({ entitlements, onPortal, busy }) {
+function PlanCard({ entitlements, onPortal, onRenew, busy }) {
   if (!entitlements) return null;
 
   const rows = [];
@@ -159,9 +180,16 @@ function PlanCard({ entitlements, onPortal, busy }) {
           <h2 className={styles.planCardName}>{entitlements.planLabel}</h2>
         </div>
         {entitlements.plan === 'premium' && (
-          <Button variant="ghost" onClick={onPortal} loading={busy === 'portal'}>
-            Gerenciar assinatura
-          </Button>
+          <div className={styles.planCardActions}>
+            {entitlements.cancelAtPeriodEnd && (
+              <Button variant="primary" onClick={onRenew} loading={busy === 'renew'}>
+                Renovar assinatura
+              </Button>
+            )}
+            <Button variant="ghost" onClick={onPortal} loading={busy === 'portal'}>
+              Gerenciar assinatura
+            </Button>
+          </div>
         )}
       </div>
 
@@ -183,7 +211,9 @@ function PlanCard({ entitlements, onPortal, busy }) {
       )}
       {entitlements.cancelAtPeriodEnd && (
         <p className={styles.planCardNote}>
-          Assinatura cancelada: o acesso continua ate o fim do periodo pago.
+          Assinatura cancelada: seu plano encerra em{' '}
+          {new Date(entitlements.expiresAt).toLocaleDateString('pt-BR')} e nao renova sozinho.
+          Clique em &quot;Renovar assinatura&quot; pra manter o Premium sem interrupcao.
         </p>
       )}
     </section>
