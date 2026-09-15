@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { setLibraryUserId } from '@/lib/library';
 
 // The signed-in account and what its plan unlocks. Seeded from the server
 // layout (so the first paint already knows) and refreshable after a checkout
@@ -14,6 +15,13 @@ const SessionContext = createContext({
 
 export default function SessionProvider({ value, children }) {
   const [session, setSession] = useState(value || { user: null, entitlements: null });
+
+  // Scopes the local library (playlists, favorites, history) to this account
+  // - called during render, not an effect, so it takes effect before the
+  // very first read of localStorage rather than one render late. Safe here
+  // because it is idempotent (a no-op once the id already matches) and does
+  // not touch localStorage itself, only which key later reads/writes use.
+  setLibraryUserId(session.user?.id || null);
 
   const refresh = useCallback(async () => {
     try {
