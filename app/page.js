@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { getAuth } from '@/lib/server/auth';
 import { TRIAL_DAYS } from '@/lib/entitlements';
-import { APP_NAME, PRICING, formatBRL, monthlyEquivalent } from '@/lib/pricing';
+import { APP_NAME, PRICING, formatBRL, monthlyEquivalent, yearlySavings } from '@/lib/pricing';
 import LogoMark from '@/components/LogoMark';
 import styles from './page.module.css';
 
@@ -161,12 +161,18 @@ export default async function LandingPage() {
             </Link>
           </article>
 
-          {Object.values(PRICING).map((plan) => (
+          {Object.values(PRICING)
+            .filter((plan) => plan.id !== 'once')
+            .map((plan) => (
             <article
               key={plan.id}
               className={`${styles.plan} ${plan.id === 'yearly' ? styles.planFeatured : ''}`}
             >
-              {plan.id === 'yearly' && <span className={styles.planTag}>Melhor valor</span>}
+              {plan.id === 'yearly' && (
+                <span className={styles.planTag}>
+                  Melhor valor - economize {yearlySavings().percent}%
+                </span>
+              )}
               <h3 className={styles.planName}>Premium {plan.label.toLowerCase()}</h3>
               <p className={styles.planPrice}>
                 {formatBRL(plan.amount)}
@@ -174,7 +180,8 @@ export default async function LandingPage() {
               </p>
               {plan.period === 'ano' && (
                 <p className={styles.planEquivalent}>
-                  equivale a {formatBRL(monthlyEquivalent(plan))} por mes
+                  equivale a {formatBRL(monthlyEquivalent(plan))} por mes - economize{' '}
+                  {formatBRL(yearlySavings().amount)} no ano
                 </p>
               )}
               <ul className={styles.planList}>

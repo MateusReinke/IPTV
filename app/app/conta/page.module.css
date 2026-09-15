@@ -130,6 +130,17 @@
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+.planBadge {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
 .planName {
   font-size: 14px;
   font-weight: 700;
