@@ -45,6 +45,13 @@
   flex-wrap: wrap;
 }
 
+.planCardActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .planCardLabel {
   font-size: 11.5px;
   font-weight: 700;

@@ -12,9 +12,12 @@ export const dynamic = 'force-dynamic';
 export default async function AdminPage() {
   const [stats, audit] = await Promise.all([dashboardStats(), recentAudit(12)]);
 
-  // Rough MRR: everyone paying counted at the monthly price. Good enough to
-  // watch the trend; the provider's dashboard is the source of truth.
-  const estimatedMrr = stats.paying * monthlyEquivalent(PRICING.monthly);
+  // Rough MRR: everyone still set to renew, counted at the monthly price
+  // (excludes accounts that already canceled but keep access until the paid
+  // period ends - they count in "Assinantes" but will not bill again).
+  // Good enough to watch the trend; the provider's dashboard is the source
+  // of truth.
+  const estimatedMrr = stats.renewing * monthlyEquivalent(PRICING.monthly);
 
   return (
     <main className={styles.page}>

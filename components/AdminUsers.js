@@ -150,7 +150,11 @@ export default function AdminUsers() {
                       <span className={`${styles.plan} ${styles[`plan_${ent.plan}`]}`}>
                         {ent.plan === 'trial' ? 'Teste' : ent.plan === 'premium' ? 'Premium' : 'Livre'}
                       </span>
-                      {row.cancel_at_period_end && <div className={styles.sub}>cancelando</div>}
+                      {row.cancel_at_period_end && (
+                        <div className={styles.sub}>
+                          encerra {ent.expiresAt ? new Date(ent.expiresAt).toLocaleDateString('pt-BR') : ''}
+                        </div>
+                      )}
                       {row.provider && <div className={styles.sub}>{row.provider}</div>}
                     </td>
                     <td className={styles.dateCell}>
