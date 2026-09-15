@@ -15,7 +15,7 @@ grátis, player, multitela, cobrança e painel de controle de assinantes.
 | Divulgação | `/` | Landing page pública com recursos, planos e FAQ |
 | Cadastro/login | `/criar-conta`, `/entrar` | Conta com teste de 7 dias automático |
 | App | `/app` | Playlists salvas |
-| Navegação | `/app/playlist/[id]` | TV ao vivo, filmes, séries, favoritos, histórico |
+| Navegação | `/app/playlist/[id]` | TV ao vivo, filmes, séries, favoritos, histórico e indicação da IA |
 | Player | `/app/playlist/[id]/player` | Player com retomada de onde parou |
 | **Multitela** | `/app/multiview` | Grade de 1 a 9 canais, áudio selecionável |
 | Conta | `/app/conta` | Plano, assinatura, backup e sincronização |
@@ -29,10 +29,51 @@ grátis, player, multitela, cobrança e painel de controle de assinantes.
 | Áudio selecionável | — | ✓ | ✓ |
 | Histórico / continuar assistindo | — | ✓ | ✓ |
 | Sincronização entre aparelhos | — | ✓ | ✓ |
+| Indicação da IA | 1 a cada 15 dias | ilimitada | ilimitada |
 | Favoritos e backup em arquivo | ✓ | ✓ | ✓ |
 
 Os limites são definidos em `lib/entitlements.js` e **aplicados no servidor** —
 mudar o plano é uma linha, e nenhum limite depende do que o navegador diz.
+
+### Indicação da IA
+
+Na aba **Filmes**, o botão *Indicação da IA* abre um seletor de gênero (as
+categorias do provedor, limpas: `FILMES | AÇÃO` vira `Ação`) e devolve **um**
+filme, com o motivo de ele combinar com a conta.
+
+1. O navegador monta a lista: até 40 títulos do gênero escolhido, já sem o que
+   a conta assistiu, e um resumo do perfil (gêneros mais vistos, últimos
+   títulos, favoritos). A lista sai do catálogo que o navegador já tem — o
+   servidor nunca precisa das credenciais do provedor para isso.
+2. `POST /api/recommend` reserva a cota do plano, manda perfil e lista para o
+   modelo (resposta em JSON validada contra a lista enviada) e devolve o filme,
+   o motivo e até duas alternativas.
+3. **Sem chave de IA** — ou se a chamada falhar — o mesmo pedido é respondido
+   pelo ranking local do servidor (nota do título + gêneros que a conta
+   assiste) e a tela diz que a indicação não veio da IA.
+
+Serve **OpenAI ou Anthropic**, basta uma chave:
+
+| Variável | Padrão | Para quê |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | — | Liga a indicação via OpenAI |
+| `OPENAI_MODEL` | `gpt-5.4-mini` | Troca o modelo |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Deixe vazia na OpenAI normal; só para Azure, proxy ou endpoint compatível |
+| `ANTHROPIC_API_KEY` | — | Liga a indicação via Claude |
+| `ANTHROPIC_MODEL` | `claude-opus-5` | Troca o modelo |
+| `AI_PROVIDER` | a chave que existir | `openai`, `anthropic` ou `local` |
+
+Com as duas chaves presentes e sem `AI_PROVIDER`, vale a OpenAI. A chave fica
+só no servidor — nada de `NEXT_PUBLIC_`, ela nunca entra no bundle.
+
+A cota gratuita é uma reserva no banco (`ai_picks`), tomada **antes** da
+indicação e devolvida se nada for indicado: uma falha do provedor não custa a
+quinzena de ninguém. Duas abas clicando ao mesmo tempo gastam uma só (lock por
+conta).
+
+No plano gratuito o histórico não é gravado (é recurso pago), então a leitura
+de perfil se apoia nos favoritos e no gênero escolhido; na assinatura, a
+indicação passa a considerar tudo o que foi assistido.
 
 ### Como o limite de telas é realmente imposto
 
@@ -85,6 +126,10 @@ cadastrar e o painel `/admin` apareça.
 | `APP_ENCRYPTION_KEY` | recomendada | Criptografa favoritos/histórico no banco. Sem ela a sincronização fica desligada. Aceita 32 bytes em base64 ou qualquer texto aleatório com 16+ caracteres |
 | `ADMIN_EMAILS` | recomendada | Quem vira admin ao se cadastrar |
 | `STREAM_TOKEN_SECRET` | não | O app gera e guarda a chave sozinho quando ausente |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | não | Liga a indicação da IA (basta uma). Sem nenhuma, o servidor indica pelo ranking local |
+| `OPENAI_MODEL` / `ANTHROPIC_MODEL` | não | Troca o modelo usado |
+| `AI_PROVIDER` | não | Decide o provedor quando as duas chaves existem |
+| `NEXT_PUBLIC_AI_PICK_COOLDOWN_DAYS` | não | Intervalo entre indicações no plano gratuito (padrão 15) |
 | `STRIPE_*` | não | Pagamento online; sem elas, liberação manual pelo painel |
 
 ## Não consigo criar conta / algo não funciona
@@ -247,6 +292,7 @@ app/
     stream                    proxy de bytes (exige token)
     xtream                    proxy do player_api.php (exige sessão)
     library                   sincronização da biblioteca (exige plano)
+    recommend                 indicação da IA (cota do plano + Claude)
     billing/*                 checkout, portal e webhook
     admin/*                   métricas, listagem e ações
 lib/
@@ -255,12 +301,15 @@ lib/
   favorites.js history.js     seções da biblioteca
   sync.js backup.js           sincronização e backup em arquivo
   multiview.js                estado da grade
+  recommend.js                gêneros, perfil e lista enviada à indicação
   server/
     db.js                     pool + migrações automáticas
     settings.js               chaves que o app gera para si na primeira vez
     auth.js                   senhas (scrypt) e sessões
     leases.js playToken.js    limite de telas e tokens de reprodução
     libraryStore.js           biblioteca criptografada em repouso
+    recommend.js              prompt, provedores (OpenAI/Claude) e ranking local
+    picks.js                  cota da indicação da IA (reserva/devolução)
     billing.js                adaptador de pagamento (Stripe)
     admin.js                  métricas e ações administrativas
 db/migrations/                SQL aplicado automaticamente
@@ -281,6 +330,10 @@ scripts/setup-env.sh          gera o .env com segredos aleatorios
   porque obtê-lo já exige uma conta ativa.
 - **Nove telas exigem uma máquina razoável.** São nove decodificadores de vídeo
   simultâneos; em celulares antigos, quatro já é bastante.
+- **A indicação da IA custa por uso.** Cada pedido é uma chamada paga ao
+  provedor configurado; a cota do plano gratuito e o limite de 20 pedidos por
+  hora por conta existem para que isso não vire uma conta aberta. Sem chave
+  nenhuma o recurso continua de pé, mas quem escolhe é o ranking local.
 
 ## Aviso
 
