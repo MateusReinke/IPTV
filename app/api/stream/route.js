@@ -27,7 +27,13 @@ import { decryptStreamTarget, encryptStreamTarget } from '@/lib/server/streamCry
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const UPSTREAM_HEADERS = { 'User-Agent': 'Mozilla/5.0 (compatible; IPTV-Client/1.0)' };
+// Xtream panels commonly gate *live* channels behind a player User-Agent
+// allowlist (anti-leech) while leaving VOD unchecked - a custom UA here can
+// get 403'd on /live/... even though the exact same account plays fine in
+// VLC or another known player. VLC's UA is close to universally allowlisted
+// (it's the reference client most panels are tested against), so it is a
+// safer default than a made-up client name.
+const UPSTREAM_HEADERS = { 'User-Agent': 'VLC/3.0.20 LibVLC/3.0.20' };
 
 // Bounds only how long we wait for the upstream connection/headers. It must
 // NOT bound the body transfer too - an aborted-after-N-seconds signal stays
@@ -103,8 +109,14 @@ export async function GET(request) {
   }
 
   const headers = { ...UPSTREAM_HEADERS };
+  // Real players (VLC chief among them) send a Range header on essentially
+  // every request, including the very first one for the manifest - not just
+  // on byte-range seeks. Some Xtream panels use "no Range header" as an
+  // anti-leech signal (a script fetching once, not a real player) and 403
+  // live requests that lack one; defaulting to the whole-file range makes an
+  // initial manifest fetch look like the real player traffic it is proxying.
   const range = request.headers.get('range');
-  if (range) headers.Range = range;
+  headers.Range = range || 'bytes=0-';
 
   const controller = new AbortController();
   const connectTimer = setTimeout(() => controller.abort(), CONNECT_TIMEOUT_MS);
@@ -129,6 +141,17 @@ export async function GET(request) {
 
   if (isPlaylist(contentType, targetUrl.pathname)) {
     const text = await upstream.text();
+    if (!upstream.ok) {
+      // TEMP DEBUG - remove once the upstream 403 on live is understood.
+      const redactedUrl = targetUrl.toString().replace(/(\/live\/[^/]+)\/[^/]+\//, '$1/***/');
+      console.error('[stream] upstream nao-2xx', {
+        url: redactedUrl,
+        status: upstream.status,
+        contentType,
+        headers: Object.fromEntries(upstream.headers.entries()),
+        bodyPreview: text.slice(0, 500),
+      });
+    }
     const rewritten = await rewritePlaylist(text, targetUrl, token);
     return new Response(rewritten, {
       status: upstream.status,

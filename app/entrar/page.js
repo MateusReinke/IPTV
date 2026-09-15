@@ -3,9 +3,15 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import AuthCard, { Field, FormError, authStyles as styles } from '@/components/AuthCard';
+import AuthCard, { Field, FormError, GoogleButton, authStyles as styles } from '@/components/AuthCard';
 import Button from '@/components/Button';
 import SetupWarning from '@/components/SetupWarning';
+
+const GOOGLE_ERROR_MESSAGES = {
+  google_denied: 'Voce cancelou o login com o Google.',
+  google_disabled: 'Esta conta esta suspensa.',
+  google: 'Nao foi possivel entrar com o Google. Tente novamente.',
+};
 
 export default function LoginPage() {
   return (
@@ -24,7 +30,9 @@ function LoginForm() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(
+    () => GOOGLE_ERROR_MESSAGES[searchParams.get('error')] || ''
+  );
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(event) {
@@ -61,6 +69,7 @@ function LoginForm() {
       }
     >
       <SetupWarning />
+      <GoogleButton next={next} />
       <form className={styles.form} onSubmit={handleSubmit}>
         <Field
           id="email"

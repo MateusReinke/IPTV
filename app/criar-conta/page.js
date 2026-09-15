@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import AuthCard, { Field, FormError, authStyles as styles } from '@/components/AuthCard';
+import AuthCard, { Field, FormError, GoogleButton, authStyles as styles } from '@/components/AuthCard';
 import Button from '@/components/Button';
 import SetupWarning from '@/components/SetupWarning';
 import { TRIAL_DAYS } from '@/lib/entitlements';
@@ -50,6 +50,7 @@ export default function SignupPage() {
       }
     >
       <SetupWarning />
+      <GoogleButton next="/app" />
       <form className={styles.form} onSubmit={handleSubmit}>
         <Field id="name" label="Nome" value={name} onChange={setName} autoComplete="name" />
         <Field

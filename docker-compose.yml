@@ -53,18 +53,21 @@ services:
       # Opcionais - o app funciona sem elas.
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       APP_URL: ${APP_URL:-}
-      # Indicacao da IA: basta uma das chaves. Sem nenhuma, o servidor cai no
-      # ranking local.
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-}
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
-      AI_PROVIDER: ${AI_PROVIDER:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_PRICE_MONTHLY: ${STRIPE_PRICE_MONTHLY:-}
       STRIPE_PRICE_YEARLY: ${STRIPE_PRICE_YEARLY:-}
+      # Recomendacao por IA - opcional, ver .env.example.
+      AI_PROVIDER: ${AI_PROVIDER:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      NEXT_PUBLIC_AI_PICK_COOLDOWN_DAYS: ${NEXT_PUBLIC_AI_PICK_COOLDOWN_DAYS:-15}
+      # Login com Google - opcional, ver .env.example.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     depends_on:
       postgres:
         condition: service_healthy
