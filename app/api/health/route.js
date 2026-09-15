@@ -2,6 +2,8 @@ import { checkDatabase } from '@/lib/server/db';
 import { libraryStorageConfigured } from '@/lib/server/libraryStore';
 import { streamSecretFromEnv } from '@/lib/server/playToken';
 import { billingConfigured } from '@/lib/server/billing';
+import { aiConfigured } from '@/lib/server/ai';
+import { googleAuthConfigured } from '@/lib/server/googleAuth';
 
 // Setup diagnostics. Deploys fail on configuration far more often than on
 // code, and "não consigo criar usuário" is not something anyone should have to
@@ -33,6 +35,14 @@ export async function GET() {
       configured: billingConfigured(),
       note: 'Opcional: sem Stripe, libere assinaturas manualmente pelo painel',
     },
+    ai: {
+      configured: aiConfigured(),
+      note: 'Opcional: AI_PROVIDER/ANTHROPIC_*/OPENAI_* - sem eles, o botao "IA escolhe pra voce" fica oculto',
+    },
+    googleAuth: {
+      configured: googleAuthConfigured(),
+      note: 'Opcional: GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET - sem eles, o botao "Continuar com Google" fica oculto',
+    },
   };
 
   // Only the database truly blocks the product now.
@@ -43,6 +53,12 @@ export async function GET() {
   }
   if (!billingConfigured()) {
     warnings.push('Sem Stripe: libere assinaturas manualmente pelo painel /admin.');
+  }
+  if (!checks.ai.configured) {
+    warnings.push('Sem provedor de IA: a recomendacao "IA escolhe pra voce" fica indisponivel.');
+  }
+  if (!checks.googleAuth.configured) {
+    warnings.push('Sem GOOGLE_CLIENT_ID/SECRET: login com Google fica indisponivel.');
   }
 
   const ready = blocking.length === 0;

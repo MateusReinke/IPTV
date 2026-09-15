@@ -86,6 +86,8 @@ cadastrar e o painel `/admin` apareça.
 | `ADMIN_EMAILS` | recomendada | Quem vira admin ao se cadastrar |
 | `STREAM_TOKEN_SECRET` | não | O app gera e guarda a chave sozinho quando ausente |
 | `STRIPE_*` | não | Pagamento online; sem elas, liberação manual pelo painel |
+| `AI_PROVIDER` / `ANTHROPIC_*` / `OPENAI_*` | não | Recomendação "IA escolhe pra você"; sem elas, o botão fica oculto |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | não | Login com Google; sem elas, só e-mail/senha |
 
 ## Não consigo criar conta / algo não funciona
 
@@ -143,6 +145,43 @@ a verificação de assinatura do webhook; nada mais no app precisa mudar.
 > contra a API real** — não havia chaves neste ambiente. Rode um pagamento de
 > teste no modo sandbox antes de abrir para o público. Todo o resto (teste
 > grátis, limites, painel, liberação manual) foi testado ponta a ponta.
+
+## Recomendação por IA
+
+O botão "IA escolhe pra você" (nas abas Filmes/Séries) manda o catálogo que o
+navegador já carregou - sem nenhuma credencial do IPTV - para `lib/server/ai.js`,
+que pede a um provedor de IA para escolher um título e explicar o motivo.
+Mesma ideia de isolamento de provedor que `lib/server/billing.js` usa para o
+Stripe: trocar de provedor é escrever uma função nova, nada mais no app muda.
+
+- Configure `ANTHROPIC_API_KEY` **ou** `OPENAI_API_KEY` (não precisa das
+  duas). `AI_PROVIDER` é opcional: em branco, o app detecta sozinho pela
+  chave presente.
+- `NEXT_PUBLIC_AI_PICK_COOLDOWN_DAYS` (padrão 15) limita a uma recomendação
+  nova por conta a cada N dias, imposto no servidor, para controlar o custo
+  de API - não é um limite de plano.
+- Sem nenhuma chave configurada o botão fica oculto e `/api/health` mostra o
+  aviso; o restante do app funciona normalmente.
+- Se o modelo devolver um título fora do catálogo enviado, o app cai para o
+  sorteio ponderado por nota (o mesmo do botão "Sortear") em vez de quebrar.
+
+## Login com Google
+
+Nas telas `/entrar` e `/criar-conta`, o botão "Continuar com Google" só
+aparece quando `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` estão configurados
+(`lib/server/googleAuth.js`). Fluxo OAuth "Authorization Code" clássico:
+`app/api/auth/google` redireciona pro Google, `app/api/auth/google/callback`
+troca o código, resolve a conta e cria a sessão do mesmo jeito que
+login/signup por senha (`lib/server/auth.js`).
+
+- Um e-mail do Google que já tem conta por senha é **vinculado
+  automaticamente** (só se o Google confirmar `email_verified`); não existe
+  conta duplicada por causa disso.
+- Conta nova por Google ganha o mesmo teste de 7 dias do cadastro normal.
+- Crie um "OAuth client ID" (tipo **Web application**) no Google Cloud
+  Console e cadastre a **Authorized redirect URI**
+  `{seu dominio}/api/auth/google/callback` - sem isso o Google rejeita o
+  login com `redirect_uri_mismatch`.
 
 ## Painel de controle (`/admin`)
 
@@ -243,18 +282,21 @@ app/
   admin/                      painel do operador
   api/
     auth/*                    cadastro, login, sessão, redefinição
+    auth/google, auth/google/callback   login com Google (OAuth)
     play/lease                leases + emissão do token de reprodução
     stream                    proxy de bytes (exige token)
     xtream                    proxy do player_api.php (exige sessão)
     library                   sincronização da biblioteca (exige plano)
     billing/*                 checkout, portal e webhook
     admin/*                   métricas, listagem e ações
+    ai/pick                   recomendação por IA (cooldown por conta)
 lib/
   entitlements.js             planos e o que cada um libera (cliente+servidor)
   library.js                  documento local + regra de merge
   favorites.js history.js     seções da biblioteca
   sync.js backup.js           sincronização e backup em arquivo
   multiview.js                estado da grade
+  shuffle.js                  sorteio ponderado por nota (fallback da IA)
   server/
     db.js                     pool + migrações automáticas
     settings.js               chaves que o app gera para si na primeira vez
@@ -262,6 +304,8 @@ lib/
     leases.js playToken.js    limite de telas e tokens de reprodução
     libraryStore.js           biblioteca criptografada em repouso
     billing.js                adaptador de pagamento (Stripe)
+    ai.js                     adaptador de IA (Anthropic/OpenAI)
+    googleAuth.js             adaptador de login com Google (OAuth)
     admin.js                  métricas e ações administrativas
 db/migrations/                SQL aplicado automaticamente
 docker-compose.yml            app + Postgres em um comando
